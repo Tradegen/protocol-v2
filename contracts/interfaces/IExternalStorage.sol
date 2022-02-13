@@ -4,9 +4,7 @@ pragma solidity ^0.8.3;
 
 interface IExternalStorage {
     struct Attribute {
-        bool initialized;
         bool unique;
-        uint index;
         uint updateFee;
         bytes32 name;
         bytes32 variableType;
@@ -73,13 +71,10 @@ interface IExternalStorage {
 
     /**
     * @dev Sets the attribute's value to the new value
-    * @param _user Address of the NFT owner
-    * @param _id NFT id
     * @param _attributeName Name of the attribute
     * @param _newValue New value of the attribute
-    * @return (bool) Whether the attribute's value was updated successfully
     */
-    function updateValue(address _user, uint _id, bytes32 _attributeName, bytes calldata _newValue) external returns (bool);
+    function updateValue(bytes32 _attributeName, bytes calldata _newValue) external;
 
     /**
     * @dev Returns the bytes data and variable type of an attribute

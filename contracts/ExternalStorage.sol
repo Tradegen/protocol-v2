@@ -11,9 +11,12 @@ import "./libraries/TxDataUtils.sol";
 
 //Interfaces
 import "./interfaces/IExternalStorage.sol";
+import "./interfaces/IUsers.sol";
 
 contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
     using SafeERC20 for IERC20;
+
+    IUsers public immutable users;
 
     bytes32[] public attributeNames;
     IERC20 public feeToken;
@@ -33,12 +36,13 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
     //Maps from attribute name => data => NFT ID
     mapping(bytes32 => mapping (bytes => uint)) internal bytesData;
 
-    constructor(address _feeToken, address _feeRecipient) Ownable() {
+    constructor(address _feeToken, address _feeRecipient, address _users) Ownable() {
         require(_feeToken != address(0), "ExternalStorage: Invalid fee token.");
         require(_feeRecipient != address(0), "ExternalStorage: Invalid fee recipient.");
 
         feeToken = IERC20(_feeToken);
         feeRecipient = _feeRecipient;
+        users = IUsers(_users);
     }
 
     /* ========== VIEWS ========== */
@@ -53,7 +57,7 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
     }
 
     /**
-    * @dev Returns the name, variable type, and update fee for each attribute of the Template
+    * @dev Returns the name, variable type, and update fee for each attribute
     * @return (bytes32[], bytes32[], uint[]) The name, variable type, and update fee of each attribute
     */
     function getAttributes() external view override returns (bytes32[] memory, bytes32[] memory, uint[] memory) {
@@ -173,12 +177,12 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
     * @param _updateFee Fee that a user pays when updating an attribute
     * @return (bool) Whether the attribute was added successfully
     */
-    function addAttribute(bytes32 _attributeName, bytes32 _attributeType, uint _updateFee, bool _unique) external override onlyOperator returns (bool) {
+    function addAttribute(bytes32 _attributeName, bytes32 _attributeType, uint _updateFee, bool _unique) external override onlyOwner returns (bool) {
         if (attributes[_attributeName].name == _attributeName) {
             return false;
         }
 
-        attributes[_attributeName] = Attribute(false, _unique, attributeNames.length, _updateFee, _attributeName, _attributeType);
+        attributes[_attributeName] = Attribute(_unique, _updateFee, _attributeName, _attributeType);
         attributeNames.push(_attributeName);
 
         return true;
@@ -192,7 +196,7 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
     * @param _unique Whether the attribute values must be unique throughout a Template
     * @return (bool) Whether the attributes were added successfully
     */
-    function addAttributes(bytes32[] calldata _attributeNames, bytes32[] calldata _attributeTypes, uint[] calldata _updateFees, bool[] calldata _unique) external override onlyOperator returns (bool) {
+    function addAttributes(bytes32[] calldata _attributeNames, bytes32[] calldata _attributeTypes, uint[] calldata _updateFees, bool[] calldata _unique) external override onlyOwner returns (bool) {
         if (_attributeNames.length != _attributeTypes.length) {
             return false;
         }
@@ -210,7 +214,7 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
                 return false;
             }
 
-            attributes[_attributeNames[i]] = Attribute(false, _unique[i], attributeNames.length, _updateFees[i], _attributeNames[i], _attributeTypes[i]);
+            attributes[_attributeNames[i]] = Attribute(_unique[i], _updateFees[i], _attributeNames[i], _attributeTypes[i]);
             attributeNames.push(_attributeNames[i]);
         }
 
@@ -225,7 +229,7 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
     * @param _newFee The new updateFee
     * @return (bool) Whether the fee was updated successfully
     */
-    function updateAttributeFee(bytes32 _attributeName, uint _newFee) external override onlyOperator returns (bool) {
+    function updateAttributeFee(bytes32 _attributeName, uint _newFee) external override onlyOwner returns (bool) {
         if (attributes[_attributeName].name != _attributeName) {
             return false;
         }
@@ -297,32 +301,22 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
 
     /**
     * @dev Sets the attribute's value to the new value
-    * @param _user Address of the NFT owner
-    * @param _id NFT id
     * @param _attributeName Name of the attribute
     * @param _newValue New value of the attribute
-    * @return (bool) Whether the attribute's value was updated successfully
     */
-    function updateValue(address _user, uint _id, bytes32 _attributeName, bytes calldata _newValue) external override onlyOperator returns (bool) {
-        if (attributes[_attributeName].name != _attributeName) {
-            return false;
-        }
+    function updateValue(bytes32 _attributeName, bytes calldata _newValue) external override {
+        uint id = users.getUser(msg.sender);
 
-        if (_id == 0) {
-            return false;
-        }
+        require(id > 0, "ExternalStorage: user has not created a profile yet.");
+        require(attributes[_attributeName].name == _attributeName, "ExternalStorage: attribute does not exist.");
+        require(!(attributes[_attributeName].unique && bytesData[_attributeName][_newValue] > 0), "ExternalStorage: attribute must have a unique value.");
 
-        //Check if attribute value is unique
-        if (attributes[_attributeName].unique && bytesData[_attributeName][_newValue] > 0) {
-            return false;
-        }
+        // Pay fee for updating attribute value.
+        feeToken.safeTransferFrom(msg.sender, feeRecipient, attributes[_attributeName].updateFee);
 
-        //Pay the update fee
-        if (!feeToken.transferFrom(_user, feeRecipient, attributes[_attributeName].updateFee)) {
-            return false;
-        }
-        
-        return _setValueByType(_id, _attributeName, attributes[_attributeName].variableType, _newValue);
+        require(_setValueByType(id, _attributeName, attributes[_attributeName].variableType, _newValue), "ExternalStorage: error when updating value.");
+
+        emit UpdatedValue(msg.sender, id, _attributeName, _newValue);
     }
 
     /* ========== INTERNAL FUNCTIONS ========== */
@@ -399,4 +393,5 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
     event UpdatedAttributeFee(bytes32 name, uint newFee);
     event SetAttributeValue(bytes32 name, bytes32 variableType, bytes value);
     event SetOperator(address operator);
+    event UpdatedValue(address indexed user, uint indexed profileID, bytes32 attributeName, bytes value);
 }
