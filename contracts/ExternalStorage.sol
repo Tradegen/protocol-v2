@@ -3,6 +3,7 @@
 pragma solidity ^0.8.3;
 
 import './openzeppelin-solidity/contracts/SafeMath.sol';
+import './openzeppelin-solidity/contracts/Ownable.sol';
 import './openzeppelin-solidity/contracts/ERC20/SafeERC20.sol';
 
 //Libraries
@@ -11,13 +12,13 @@ import "./libraries/TxDataUtils.sol";
 //Interfaces
 import "./interfaces/IExternalStorage.sol";
 
-contract ExternalStorage is IExternalStorage, TxDataUtils {
+contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
     using SafeERC20 for IERC20;
 
     bytes32[] public attributeNames;
     IERC20 public feeToken;
     address public feeRecipient;
-    address public operator;
+    address public operator; // User ERC1155 contract
     mapping(bytes32 => Attribute) public attributes;
 
     //Data storage
@@ -32,13 +33,12 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     //Maps from attribute name => data => NFT ID
     mapping(bytes32 => mapping (bytes => uint)) internal bytesData;
 
-    constructor(address _feeToken, address _feeRecipient) {
-        require(_feeToken != address(0), "ExternalStorage: Invlaid fee token.");
-        require(_feeRecipient != address(0), "ExternalStorage: Invlaid fee recipient.");
+    constructor(address _feeToken, address _feeRecipient) Ownable() {
+        require(_feeToken != address(0), "ExternalStorage: Invalid fee token.");
+        require(_feeRecipient != address(0), "ExternalStorage: Invalid fee recipient.");
 
         feeToken = IERC20(_feeToken);
         feeRecipient = _feeRecipient;
-        operator = msg.sender;
     }
 
     /* ========== VIEWS ========== */
@@ -46,9 +46,9 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     /**
     * @dev Given the name of an attribute, returns the attribute's variable type
     * @param _attributeName Name of the attribute
-    * @return (bytes32, uint) The attribute's variable type and update fee
+    * @return (string, uint) The attribute's variable type and update fee
     */
-    function getAttribute(bytes32 _attributeName) external view isValidAttributeName(_attributeName) returns (bytes32, uint) {
+    function getAttribute(bytes32 _attributeName) external view override isValidAttributeName(_attributeName) returns (bytes32, uint) {
         return (attributes[_attributeName].variableType, attributes[_attributeName].updateFee);
     }
 
@@ -56,14 +56,14 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     * @dev Returns the name, variable type, and update fee for each attribute of the Template
     * @return (bytes32[], bytes32[], uint[]) The name, variable type, and update fee of each attribute
     */
-    function getAttributes() external view returns (bytes32[] memory, bytes32[] memory, uint[] memory) {
+    function getAttributes() external view override returns (bytes32[] memory, bytes32[] memory, uint[] memory) {
         bytes32[] memory names = attributeNames;
         bytes32[] memory types = new bytes32[](names.length);
         uint[] memory fees = new uint[](names.length);
 
         for (uint i = 0; i < names.length; i++) {
-            types[i] = attributes[i].variableType;
-            fees[i] = attributes[i].updateFee;
+            types[i] = attributes[attributeNames[i]].variableType;
+            fees[i] = attributes[attributeNames[i]].updateFee;
         }
 
         return (names, types, fees);
@@ -76,23 +76,23 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     * @param _attributeName Name of the attribute
     * @return (bytes, bytes32) Bytes data of the attribute and the attribute's variable type
     */
-    function getValue(uint _id, bytes32 _attributeName) external view isValidId(_id) isValidAttributeName(_attributeName) returns (bytes memory, bytes32) {
+    function getValue(uint _id, bytes32 _attributeName) external view override isValidId(_id) isValidAttributeName(_attributeName) returns (bytes memory, bytes32) {
         bytes32 variableType = attributes[_attributeName].variableType;
         bytes memory rawBytes;
 
-        if (keccak256(variableType) == keccak256("uint")) {
-            rawBytes = bytes(uintStorage[_attributeName][_id]);
+        if (keccak256(abi.encodePacked(variableType)) == keccak256(abi.encodePacked("uint"))) {
+            rawBytes = abi.encodePacked(uintStorage[_attributeName][_id]);
         }
-        else if (keccak256(variableType) == keccak256("bool")) {
-            rawBytes = bytes(boolStorage[_attributeName][_id]);
+        else if (keccak256(abi.encodePacked(variableType)) == keccak256(abi.encodePacked("bool"))) {
+            rawBytes = abi.encodePacked(boolStorage[_attributeName][_id]);
         }
-        else if (keccak256(variableType) == keccak256("address")) {
-            rawBytes = bytes(addressStorage[_attributeName][_id]);
+        else if (keccak256(abi.encodePacked(variableType)) == keccak256(abi.encodePacked("address"))) {
+            rawBytes = abi.encodePacked(addressStorage[_attributeName][_id]);
         }
-        else if (keccak256(variableType) == keccak256("bytes32")) {
-            rawBytes = bytes(bytes32Storage[_attributeName][_id]);
+        else if (keccak256(abi.encodePacked(variableType)) == keccak256(abi.encodePacked("bytes32"))) {
+            rawBytes = abi.encodePacked(bytes32Storage[_attributeName][_id]);
         }
-        else if (keccak256(variableType) == keccak256("string")) {
+        else if (keccak256(abi.encodePacked(variableType)) == keccak256(abi.encodePacked("string"))) {
             rawBytes = bytes(stringStorage[_attributeName][_id]);
         }
 
@@ -106,8 +106,8 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     * @param _attributeName Name of the attribute
     * @return (uint) Value of the attribute
     */
-    function getUintValue(uint _id, bytes32 _attributeName) external view isValidId(_id) isValidAttributeName(_attributeName) returns (uint) {
-        require(keccak256(attributes[_attributeName].variableType) == keccak256("uint"), "ExternalStorage: Expected uint type.");
+    function getUintValue(uint _id, bytes32 _attributeName) external view override isValidId(_id) isValidAttributeName(_attributeName) returns (uint) {
+        require(keccak256(abi.encodePacked(attributes[_attributeName].variableType)) == keccak256(abi.encodePacked("uint")), "ExternalStorage: Expected uint type.");
 
         return uintStorage[_attributeName][_id];
     }
@@ -119,8 +119,8 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     * @param _attributeName Name of the attribute
     * @return (bool) Value of the attribute
     */
-    function getBoolValue(uint _id, bytes32 _attributeName) external view isValidId(_id) isValidAttributeName(_attributeName) returns (bool) {
-        require(keccak256(attributes[_attributeName].variableType) == keccak256("bool"), "ExternalStorage: Expected bool type.");
+    function getBoolValue(uint _id, bytes32 _attributeName) external view override isValidId(_id) isValidAttributeName(_attributeName) returns (bool) {
+        require(keccak256(abi.encodePacked(attributes[_attributeName].variableType)) == keccak256(abi.encodePacked("bool")), "ExternalStorage: Expected bool type.");
 
         return boolStorage[_attributeName][_id];
     }
@@ -132,8 +132,8 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     * @param _attributeName Name of the attribute
     * @return (bytes32) Value of the attribute
     */
-    function getBytes32Value(uint _id, bytes32 _attributeName) external view isValidId(_id) isValidAttributeName(_attributeName) returns (bytes32) {
-        require(keccak256(attributes[_attributeName].variableType) == keccak256("bytes32"), "ExternalStorage: Expected bytes32 type.");
+    function getBytes32Value(uint _id, bytes32 _attributeName) external view override isValidId(_id) isValidAttributeName(_attributeName) returns (bytes32) {
+        require(keccak256(abi.encodePacked(attributes[_attributeName].variableType)) == keccak256(abi.encodePacked("bytes32")), "ExternalStorage: Expected bytes32 type.");
 
         return bytes32Storage[_attributeName][_id];
     }
@@ -145,8 +145,8 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     * @param _attributeName Name of the attribute
     * @return (address) Value of the attribute
     */
-    function getAddressValue(uint _id, bytes32 _attributeName) external view isValidId(_id) isValidAttributeName(_attributeName) returns (address) {
-        require(keccak256(attributes[_attributeName].variableType) == keccak256("address"), "ExternalStorage: Expected address type.");
+    function getAddressValue(uint _id, bytes32 _attributeName) external view override isValidId(_id) isValidAttributeName(_attributeName) returns (address) {
+        require(keccak256(abi.encodePacked(attributes[_attributeName].variableType)) == keccak256(abi.encodePacked("address")), "ExternalStorage: Expected address type.");
 
         return addressStorage[_attributeName][_id];
     }
@@ -158,8 +158,8 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     * @param _attributeName Name of the attribute
     * @return (string) Value of the attribute
     */
-    function getStringValue(uint _id, bytes32 _attributeName) external view isValidId(_id) isValidAttributeName(_attributeName) returns (string memory) {
-        require(keccak256(attributes[_attributeName].variableType) == keccak256("string"), "ExternalStorage: Expected string type.");
+    function getStringValue(uint _id, bytes32 _attributeName) external view override isValidId(_id) isValidAttributeName(_attributeName) returns (string memory) {
+        require(keccak256(abi.encodePacked(attributes[_attributeName].variableType)) == keccak256(abi.encodePacked("string")), "ExternalStorage: Expected string type.");
 
         return stringStorage[_attributeName][_id];
     }
@@ -173,12 +173,12 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     * @param _updateFee Fee that a user pays when updating an attribute
     * @return (bool) Whether the attribute was added successfully
     */
-    function addAttribute(bytes32 _attributeName, bytes32 _attributeType, uint _updateFee, bool _unique) external onlyOperator returns (bool) {
+    function addAttribute(bytes32 _attributeName, bytes32 _attributeType, uint _updateFee, bool _unique) external override onlyOperator returns (bool) {
         if (attributes[_attributeName].name == _attributeName) {
             return false;
         }
 
-        attributes[_attributeName] = Attribute(false, _unique, attributeNames.length, _attributeName, _attributeType, _updateFee);
+        attributes[_attributeName] = Attribute(false, _unique, attributeNames.length, _updateFee, _attributeName, _attributeType);
         attributeNames.push(_attributeName);
 
         return true;
@@ -192,7 +192,7 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     * @param _unique Whether the attribute values must be unique throughout a Template
     * @return (bool) Whether the attributes were added successfully
     */
-    function addAttributes(bytes32[] calldata _attributeNames, bytes32[] calldata _attributeTypes, uint[] calldata _updateFees, bool[] calldata _unique) external onlyOperator returns (bool) {
+    function addAttributes(bytes32[] calldata _attributeNames, bytes32[] calldata _attributeTypes, uint[] calldata _updateFees, bool[] calldata _unique) external override onlyOperator returns (bool) {
         if (_attributeNames.length != _attributeTypes.length) {
             return false;
         }
@@ -210,7 +210,7 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
                 return false;
             }
 
-            attributes[_attributeNames[i]] = Attribute(false, _unique[i], attributeNames.length, _attributeNames[i], _attributeTypes[i], _updateFees[i]);
+            attributes[_attributeNames[i]] = Attribute(false, _unique[i], attributeNames.length, _updateFees[i], _attributeNames[i], _attributeTypes[i]);
             attributeNames.push(_attributeNames[i]);
         }
 
@@ -225,7 +225,7 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     * @param _newFee The new updateFee
     * @return (bool) Whether the fee was updated successfully
     */
-    function updateAttributeFee(bytes32 _attributeName, uint _newFee) external onlyOperator returns (bool) {
+    function updateAttributeFee(bytes32 _attributeName, uint _newFee) external override onlyOperator returns (bool) {
         if (attributes[_attributeName].name != _attributeName) {
             return false;
         }
@@ -248,7 +248,7 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     * @param _initialValue Initial value of the attribute
     * @return (bool) Whether the attribute was initialized successfully
     */
-    function initializeValue(uint _id, bytes32 _attributeName, bytes calldata _initialValue) external onlyOperator returns (bool) {
+    function initializeValue(uint _id, bytes32 _attributeName, bytes calldata _initialValue) external override onlyOperator returns (bool) {
         if (attributes[_attributeName].name != _attributeName) {
             return false;
         }
@@ -272,7 +272,7 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     * @param _initialValues Initial values of the attributes
     * @return (bool) Whether the attributes were initialized successfully
     */
-    function initializeValues(uint _id, bytes32 _attributeNames, bytes calldata _initialValues) external onlyOperator returns (bool) {
+    function initializeValues(uint _id, bytes32[] calldata _attributeNames, bytes[] calldata _initialValues) external override onlyOperator returns (bool) {
         if (_id == 0) {
             return false;
         }
@@ -303,7 +303,7 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     * @param _newValue New value of the attribute
     * @return (bool) Whether the attribute's value was updated successfully
     */
-    function updateValue(address _user, uint _id, bytes32 _attributeName, bytes calldata _newValue) external onlyOperator returns (bool) {
+    function updateValue(address _user, uint _id, bytes32 _attributeName, bytes calldata _newValue) external override onlyOperator returns (bool) {
         if (attributes[_attributeName].name != _attributeName) {
             return false;
         }
@@ -336,19 +336,19 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
             bytesData[_attributeName][_newValue] = _id;
         }
 
-        if (keccak256(_variableType) == keccak256("uint")) {
+        if (keccak256(abi.encodePacked(_variableType)) == keccak256("uint")) {
             uintStorage[_attributeName][_id] = uint(read32(_newValue, 0, 32));
         }
-        else if (keccak256(_variableType) == keccak256("bool")) {
-            boolStorage[_attributeName][_id] = bool(read32(_newValue, 0, 32));
+        else if (keccak256(abi.encodePacked(_variableType)) == keccak256("bool")) {
+            boolStorage[_attributeName][_id] = !(uint(read32(_newValue, 0, 32)) == 0);
         }
-        else if (keccak256(_variableType) == keccak256("address")) {
+        else if (keccak256(abi.encodePacked(_variableType)) == keccak256("address")) {
             addressStorage[_attributeName][_id] = convert32toAddress(read32(_newValue, 0, 32));
         }
-        else if (keccak256(_variableType) == keccak256("bytes32")) {
+        else if (keccak256(abi.encodePacked(_variableType)) == keccak256("bytes32")) {
             bytes32Storage[_attributeName][_id] = read32(_newValue, 0, 32);
         }
-        else if (keccak256(_variableType) == keccak256("string")) {
+        else if (keccak256(abi.encodePacked(_variableType)) == keccak256("string")) {
             stringStorage[_attributeName][_id] = string(_newValue);
         }
         else {
@@ -360,7 +360,22 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
         return true;
     }
 
+    /* ========== RESTRICTED FUNCTIONS ========== */
+
+    function setOperator(address _operator) external onlyOwner operatorNotSet {
+        require(_operator != address(0), "ExternalStorage: invalid operator address.");
+
+        operator = _operator;
+
+        emit SetOperator(_operator);
+    }
+
     /* ========== MODIFIERS ========== */
+
+    modifier operatorNotSet() {
+        require(operator == address(0), "ExternalStorage: operator has already been set.");
+        _;
+    }
 
     modifier isValidId(uint _id) {
         require(_id > 0, "ExternalStorage: Id is not valid");
@@ -383,4 +398,5 @@ contract ExternalStorage is IExternalStorage, TxDataUtils {
     event AddedAttributes(bytes32[] names, bytes32[] variableTypes, uint[] updateFees, bool[] unique);
     event UpdatedAttributeFee(bytes32 name, uint newFee);
     event SetAttributeValue(bytes32 name, bytes32 variableType, bytes value);
+    event SetOperator(address operator);
 }

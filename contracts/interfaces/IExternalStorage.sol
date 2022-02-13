@@ -7,9 +7,9 @@ interface IExternalStorage {
         bool initialized;
         bool unique;
         uint index;
+        uint updateFee;
         bytes32 name;
         bytes32 variableType;
-        uint updateFee;
     }
 
     /**
