@@ -5,6 +5,7 @@ pragma solidity ^0.8.3;
 interface IExternalStorage {
     struct Attribute {
         bool unique;
+        bool canModify;
         uint updateFee;
         bytes32 name;
         bytes32 variableType;
@@ -16,9 +17,10 @@ interface IExternalStorage {
     * @param _attributeType The variable type of the attribute
     * @param _updateFee Fee that a user pays when updating an attribute
     * @param _unique Whether the attribute values must be unique throughout a Template
+    * @param _canModify Whether the attribute value can be modified after it is initialized.
     * @return (bool) Whether the attribute was added successfully
     */
-    function addAttribute(bytes32 _attributeName, bytes32 _attributeType, uint _updateFee, bool _unique) external returns (bool);
+    function addAttribute(bytes32 _attributeName, bytes32 _attributeType, uint _updateFee, bool _unique, bool _canModify) external returns (bool);
 
     /**
     * @dev Adds multiple attributes to the Template
@@ -26,9 +28,10 @@ interface IExternalStorage {
     * @param _attributeTypes The variable types of the attributes
     * @param _updateFees Fee that a user pays when updating each attribute
     * @param _unique Whether the attribute values must be unique throughout a Template
+    * @param _canModify Whether the attribute values can be modified after they are initialized.
     * @return (bool) Whether the attributes were added successfully
     */
-    function addAttributes(bytes32[] memory _attributeNames, bytes32[] memory _attributeTypes, uint[] memory _updateFees, bool[] memory _unique) external returns (bool);
+    function addAttributes(bytes32[] memory _attributeNames, bytes32[] memory _attributeTypes, uint[] memory _updateFees, bool[] memory _unique, bool[] memory _canModify) external returns (bool);
 
     /**
     * @dev Given the name of an attribute, returns the attribute's variable type

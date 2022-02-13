@@ -175,14 +175,15 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
     * @param _attributeName Name of the attribute to add
     * @param _attributeType The variable type of the attribute
     * @param _updateFee Fee that a user pays when updating an attribute
+    * @param _canModify Whether the attribute value can be modified after it is initialized.
     * @return (bool) Whether the attribute was added successfully
     */
-    function addAttribute(bytes32 _attributeName, bytes32 _attributeType, uint _updateFee, bool _unique) external override onlyOwner returns (bool) {
+    function addAttribute(bytes32 _attributeName, bytes32 _attributeType, uint _updateFee, bool _unique, bool _canModify) external override onlyOwner returns (bool) {
         if (attributes[_attributeName].name == _attributeName) {
             return false;
         }
 
-        attributes[_attributeName] = Attribute(_unique, _updateFee, _attributeName, _attributeType);
+        attributes[_attributeName] = Attribute(_unique, _canModify, _updateFee, _attributeName, _attributeType);
         attributeNames.push(_attributeName);
 
         return true;
@@ -194,9 +195,10 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
     * @param _attributeTypes The variable types of the attributes
     * @param _updateFees Fee that a user pays when updating each attribute
     * @param _unique Whether the attribute values must be unique throughout a Template
+    * @param _canModify Whether the attribute values can be modified after they are initialized.
     * @return (bool) Whether the attributes were added successfully
     */
-    function addAttributes(bytes32[] calldata _attributeNames, bytes32[] calldata _attributeTypes, uint[] calldata _updateFees, bool[] calldata _unique) external override onlyOwner returns (bool) {
+    function addAttributes(bytes32[] calldata _attributeNames, bytes32[] calldata _attributeTypes, uint[] calldata _updateFees, bool[] calldata _unique, bool[] calldata _canModify) external override onlyOwner returns (bool) {
         if (_attributeNames.length != _attributeTypes.length) {
             return false;
         }
@@ -214,7 +216,7 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
                 return false;
             }
 
-            attributes[_attributeNames[i]] = Attribute(_unique[i], _updateFees[i], _attributeNames[i], _attributeTypes[i]);
+            attributes[_attributeNames[i]] = Attribute(_unique[i], _canModify[i], _updateFees[i], _attributeNames[i], _attributeTypes[i]);
             attributeNames.push(_attributeNames[i]);
         }
 
@@ -308,6 +310,7 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
         uint id = users.getUser(msg.sender);
 
         require(id > 0, "ExternalStorage: user has not created a profile yet.");
+        require(!attributes[_attributeName].canModify, "ExternalStorage: attribute cannot be modified.");
         require(attributes[_attributeName].name == _attributeName, "ExternalStorage: attribute does not exist.");
         require(!(attributes[_attributeName].unique && bytesData[_attributeName][_newValue] > 0), "ExternalStorage: attribute must have a unique value.");
 
@@ -364,6 +367,12 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
         emit SetOperator(_operator);
     }
 
+    function setAttributeMutability(bytes32 _attributeName, bool _canModify) external onlyOwner isValidAttributeName(_attributeName) {
+        attributes[_attributeName].canModify = _canModify;
+
+        emit UpdatedAttributeMutability(_attributeName, _canModify);
+    }
+
     /* ========== MODIFIERS ========== */
 
     modifier operatorNotSet() {
@@ -394,4 +403,5 @@ contract ExternalStorage is IExternalStorage, TxDataUtils, Ownable {
     event SetAttributeValue(bytes32 name, bytes32 variableType, bytes value);
     event SetOperator(address operator);
     event UpdatedValue(address indexed user, uint indexed profileID, bytes32 attributeName, bytes value);
+    event UpdatedAttributeMutability(bytes32 attributeName, bool canModify);
 }
