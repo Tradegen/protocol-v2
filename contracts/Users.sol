@@ -60,6 +60,9 @@ contract Users is IUsers, ERC1155, Ownable {
 
         require(externalStorage.initializeValues(numberOfUsers, attributeNames, attributeValues), "Users: error when initializing values.");
 
+        // Create NFT
+        _mint(msg.sender, numberOfUsers, 1, "");
+
         emit CreatedProfile(msg.sender, numberOfUsers, attributeNames, attributeValues);
     }
 
