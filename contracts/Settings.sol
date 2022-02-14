@@ -22,6 +22,7 @@ contract Settings is ISettings, Ownable {
     *         MinimumNumberOfCappedPoolTokens - 10
     *         MaximumCappedPoolSeedPrice - $1,000 (10 ** 21)
     *         MinimumCappedPoolSeedPrice - $0.10 (10 ** 17)
+    *         TimeBetweenFeeSnapshots - 14 days
     */
     constructor() Ownable() {}
 

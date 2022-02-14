@@ -65,4 +65,6 @@ interface IPool {
     * @return USD price of the pool's token
     */
     function tokenPrice() external view returns (uint);
+
+    function setPoolManagerLogic(address _poolManagerLogicAddress) external;
 }

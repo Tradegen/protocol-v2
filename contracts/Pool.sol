@@ -10,6 +10,7 @@ import "./openzeppelin-solidity/contracts/ERC20/ERC20.sol";
 //Interfaces
 import './interfaces/ISettings.sol';
 import './interfaces/IPoolManagerLogic.sol';
+import './interfaces/IPoolManager.sol';
 import './interfaces/IAddressResolver.sol';
 import './interfaces/IAssetHandler.sol';
 import './interfaces/IAssetVerifier.sol';
@@ -24,18 +25,21 @@ contract Pool is IPool, ERC20 {
     using SafeERC20 for IERC20;
 
     IAddressResolver public immutable ADDRESS_RESOLVER;
-    IPoolManagerLogic public immutable POOL_MANAGER_LOGIC;
+    IPoolManagerLogic public POOL_MANAGER_LOGIC;
+    IPoolManager public immutable POOL_MANAGER;
    
     address public override manager;
     uint256 public collectedManagerFees;
 
     mapping (address => uint256) public userDeposits;
     uint256 public totalDeposits;
+    uint256 public unrealizedProfitsAtLastSnapshot;
+    uint256 public timestampAtLastSnapshot;
 
-    constructor(string memory _poolName, address _manager, address _addressResolver, address _poolManagerLogic) ERC20(_poolName, "") {
+    constructor(string memory _poolName, address _manager, address _addressResolver, address _poolManager) ERC20(_poolName, "") {
         _manager = manager;
         ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
-        POOL_MANAGER_LOGIC = IPoolManagerLogic(_poolManagerLogic);
+        POOL_MANAGER = IPoolManager(_poolManager);
     }
 
     /* ========== VIEWS ========== */
@@ -133,12 +137,7 @@ contract Pool is IPool, ERC20 {
     function tokenPrice() public view override returns (uint) {
         uint poolValue = getPoolValue();
 
-        if (totalSupply() == 0 || poolValue == 0)
-        {
-            return 10**18;
-        }
-
-        return poolValue.mul(10**18).div(totalSupply());
+        return _tokenPrice(poolValue);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -153,16 +152,19 @@ contract Pool is IPool, ERC20 {
         require(POOL_MANAGER_LOGIC.isDepositAsset(_depositAsset), "Pool: asset is not available to deposit.");
         require(_amount > 0, "Pool: Deposit must be greater than 0");
 
+        uint poolValue = getPoolValue();
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
         uint USDperToken = IAssetHandler(assetHandlerAddress).getUSDPrice(_depositAsset);
         uint userUSDValue = _amount.mul(USDperToken).div(10 ** IAssetHandler(assetHandlerAddress).getDecimals(_depositAsset));
-        uint numberOfPoolTokens = (totalSupply() > 0) ? totalSupply().mul(userUSDValue).div(getPoolValue()) : userUSDValue;
+        uint numberOfPoolTokens = (totalSupply() > 0) ? totalSupply().mul(userUSDValue).div(poolValue) : userUSDValue;
 
         _mint(msg.sender, numberOfPoolTokens);
         userDeposits[msg.sender] = userDeposits[msg.sender].add(userUSDValue);
         totalDeposits = totalDeposits.add(userUSDValue);
 
         IERC20(_depositAsset).safeTransferFrom(msg.sender, address(this), _amount);
+
+        POOL_MANAGER.updateWeight(poolValue > totalDeposits ? poolValue.sub(totalDeposits) : 0, _tokenPrice(poolValue));
 
         emit Deposit(address(this), msg.sender, _amount, userUSDValue);
     }
@@ -205,6 +207,8 @@ contract Pool is IPool, ERC20 {
             }
         }
 
+        POOL_MANAGER.updateWeight(poolValue > totalDeposits ? poolValue.sub(totalDeposits) : 0, _tokenPrice(poolValue));
+
         emit Withdraw(address(this), msg.sender, numberOfPoolTokens, valueWithdrawn, addresses, amountsWithdrawn);
     }
 
@@ -216,6 +220,33 @@ contract Pool is IPool, ERC20 {
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
+
+    function setPoolManagerLogic(address _poolManagerLogicAddress) external override onlyPoolFactory {
+        require(_poolManagerLogicAddress != address(0), "Pool: invalid asset address");
+        require(address(POOL_MANAGER_LOGIC) == address(0), "Pool: already set pool manager logic.");
+
+        POOL_MANAGER_LOGIC = IPoolManagerLogic(_poolManagerLogicAddress);
+
+        emit SetPoolManagerLogic(address(this), _poolManagerLogicAddress);
+    }
+
+    /**
+    * @dev Updates the pool's weight in the farming system based on its current unrealized profits and token price.
+    */
+    function takeSnapshot() external onlyPoolManager {
+        uint256 poolValue = getPoolValue();
+        uint256 unrealizedProfits = (poolValue > totalDeposits) ? poolValue.sub(totalDeposits) : 0;
+
+        require(unrealizedProfits > unrealizedProfitsAtLastSnapshot, "Pool: unrealized profits decreased from last snapshot.");
+        require(block.timestamp.sub(timestampAtLastSnapshot) >= ISettings(ADDRESS_RESOLVER.getContractAddress("Settings")).getParameterValue("TimeBetweenFeeSnapshots"), "Pool: not enough time between snapshots.");
+
+        unrealizedProfitsAtLastSnapshot = unrealizedProfits;
+        timestampAtLastSnapshot = block.timestamp;
+
+        POOL_MANAGER.updateWeight(unrealizedProfits, _tokenPrice(poolValue));
+
+        emit TakeSnapshot(address(this), unrealizedProfits);
+    }
 
     /**
     * @dev Executes a transaction on behalf of the pool; lets pool talk to other protocols
@@ -249,10 +280,27 @@ contract Pool is IPool, ERC20 {
         (bool success, ) = to.call(data);
         require(success, "Pool: transaction failed to execute");
 
+        uint256 poolValue = getPoolValue();
+        POOL_MANAGER.updateWeight(poolValue > totalDeposits ? poolValue.sub(totalDeposits) : 0, _tokenPrice(poolValue));
+
         emit ExecutedTransaction(address(this), manager, to, success);
     }
 
     /* ========== INTERNAL FUNCTIONS ========== */
+
+    /**
+    * @dev Calculates the price of a pool token
+    * @param _poolValue Value of the pool in USD
+    * @return Price of a pool token
+    */
+    function _tokenPrice(uint256 _poolValue) internal view returns (uint) {
+        if (totalSupply() == 0 || _poolValue == 0)
+        {
+            return 10**18;
+        }
+
+        return _poolValue.mul(10**18).div(totalSupply());
+    }
 
     /**
     * @dev Performs additional processing when withdrawing an asset (such as checking for staked tokens)
@@ -293,9 +341,16 @@ contract Pool is IPool, ERC20 {
         _;
     }
 
+    modifier onlyPoolFactory() {
+        require(msg.sender == ADDRESS_RESOLVER.getContractAddress("PoolFactory"), "Pool: Only pool's manager can call this function");
+        _;
+    }
+
     /* ========== EVENTS ========== */
 
     event Deposit(address indexed poolAddress, address indexed userAddress, uint amount, uint userUSDValue);
     event Withdraw(address indexed poolAddress, address indexed userAddress, uint numberOfPoolTokens, uint valueWithdrawn, address[] assets, uint[] amountsWithdrawn);
     event ExecutedTransaction(address indexed poolAddress, address indexed manager, address to, bool success);
+    event TakeSnapshot(address indexed poolAddress, uint unrealizedProfits);
+    event SetPoolManagerLogic(address indexed poolAddress, address poolManagerLogicAddress);
 }

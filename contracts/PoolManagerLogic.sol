@@ -14,7 +14,6 @@ import './interfaces/IPoolManagerLogic.sol';
 contract PoolManagerLogic is IPoolManagerLogic {
     using SafeMath for uint256;
 
-    address public immutable pool;
     address public immutable manager;
     IAddressResolver public immutable addressResolver;
 
@@ -26,9 +25,8 @@ contract PoolManagerLogic is IPoolManagerLogic {
     uint public lastFeeUpdate;
 
     // Check performance fee in calling contract.
-    constructor(address _manager, address _pool, uint _performanceFee, address _addressResolver) {
+    constructor(address _manager, uint _performanceFee, address _addressResolver) {
         manager = _manager;
-        pool = _pool;
         performanceFee = _performanceFee;
         addressResolver = IAddressResolver(_addressResolver);
     }

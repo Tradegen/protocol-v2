@@ -47,7 +47,7 @@ contract PoolManagerLogicFactory is IPoolManagerLogicFactory {
         require(_manager != address(0), "PoolManagerLogicFactory: invalid manager address.");
         require(poolManagerLogics[_poolAddress] == address(0), "PoolManagerLogicFactory: pool already has a PoolManagerLogic contract.");
 
-        address poolManagerLogicAddress = address(new PoolManagerLogic(_manager, _poolAddress, _performanceFee, address(ADDRESS_RESOLVER)));
+        address poolManagerLogicAddress = address(new PoolManagerLogic(_manager, _performanceFee, address(ADDRESS_RESOLVER)));
 
         poolManagerLogics[_poolAddress] = poolManagerLogicAddress;
 
