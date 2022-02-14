@@ -36,16 +36,18 @@ contract PoolManagerLogicFactory is IPoolManagerLogicFactory {
     /**
     * @dev Creates a PoolManagerLogic contract.
     * @notice This function is meant to be called by PoolFactory or CappedPoolFactory.
+    * @notice Check _performanceFee in the calling contract.
     * @param _poolAddress address of the pool.
     * @param _manager address of the pool's manager.
+    * @param _performanceFee the pool's performance fee.
     * @return address The address of the newly created contract.
     */
-    function createPoolManagerLogic(address _poolAddress, address _manager) external override onlyWhitelistedContracts returns (address) {
+    function createPoolManagerLogic(address _poolAddress, address _manager, uint _performanceFee) external override onlyWhitelistedContracts returns (address) {
         require(_poolAddress != address(0), "PoolManagerLogicFactory: invalid pool address.");
         require(_manager != address(0), "PoolManagerLogicFactory: invalid manager address.");
         require(poolManagerLogics[_poolAddress] == address(0), "PoolManagerLogicFactory: pool already has a PoolManagerLogic contract.");
 
-        address poolManagerLogicAddress = address(new PoolManagerLogic(_manager, _poolAddress, address(ADDRESS_RESOLVER)));
+        address poolManagerLogicAddress = address(new PoolManagerLogic(_manager, _poolAddress, _performanceFee, address(ADDRESS_RESOLVER)));
 
         poolManagerLogics[_poolAddress] = poolManagerLogicAddress;
 

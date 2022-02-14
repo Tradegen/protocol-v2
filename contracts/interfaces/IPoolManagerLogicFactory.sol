@@ -13,9 +13,11 @@ interface IPoolManagerLogicFactory {
     /**
     * @dev Creates a PoolManagerLogic contract.
     * @notice This function is meant to be called by PoolFactory or CappedPoolFactory.
+    * @notice Check _performanceFee in the calling contract.
     * @param _poolAddress address of the pool.
     * @param _manager address of the pool's manager.
+    * @param _performanceFee the pool's performance fee.
     * @return address The address of the newly created contract.
     */
-    function createPoolManagerLogic(address _poolAddress, address _manager) external returns (address);
+    function createPoolManagerLogic(address _poolAddress, address _manager, uint _performanceFee) external returns (address);
 }

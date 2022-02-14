@@ -25,9 +25,11 @@ contract PoolManagerLogic is IPoolManagerLogic {
     uint public override performanceFee;
     uint public lastFeeUpdate;
 
-    constructor(address _manager, address _pool, address _addressResolver) {
+    // Check performance fee in calling contract.
+    constructor(address _manager, address _pool, uint _performanceFee, address _addressResolver) {
         manager = _manager;
         pool = _pool;
+        performanceFee = _performanceFee;
         addressResolver = IAddressResolver(_addressResolver);
     }
 
@@ -175,7 +177,6 @@ contract PoolManagerLogic is IPoolManagerLogic {
 
             emit RemovedDepositAsset(_asset);
         }
-        
     }
 
     /* ========== MODIFIERS ========== */
