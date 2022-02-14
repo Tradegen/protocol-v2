@@ -36,9 +36,8 @@ contract Pool is IPool, ERC20 {
     uint public numberOfPositions;
     mapping (address => uint) public positionToIndex; //maps to (index + 1), with index 0 representing position not found
 
-    constructor(string memory _poolName, uint performanceFee, address _manager, address _addressResolver, address _poolManagerLogic) ERC20(_poolName, "") {
+    constructor(string memory _poolName, address _manager, address _addressResolver, address _poolManagerLogic) ERC20(_poolName, "") {
         _manager = manager;
-        _performanceFee = performanceFee;
         ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
         POOL_MANAGER_LOGIC = IPoolManagerLogic(_poolManagerLogic);
 
@@ -202,7 +201,7 @@ contract Pool is IPool, ERC20 {
 
         _addPositionKey(stableCoinAddress);
 
-        emit Deposit(address(this), msg.sender, amount, block.timestamp);
+        emit Deposit(address(this), msg.sender, amount);
     }
 
     /**
@@ -252,7 +251,7 @@ contract Pool is IPool, ERC20 {
 
         uint valueWithdrawn = poolValue.mul(portion).div(10**18);
 
-        emit Withdraw(address(this), msg.sender, numberOfPoolTokens, valueWithdrawn, assetsWithdrawn, amountsWithdrawn, block.timestamp);
+        emit Withdraw(address(this), msg.sender, numberOfPoolTokens, valueWithdrawn, assetsWithdrawn, amountsWithdrawn);
     }
 
     /**
@@ -299,7 +298,7 @@ contract Pool is IPool, ERC20 {
 
         _addPositionKey(receivedAsset);
 
-        emit ExecutedTransaction(address(this), manager, to, success, block.timestamp);
+        emit ExecutedTransaction(address(this), manager, to, success);
     }
 
     /**
@@ -313,7 +312,7 @@ contract Pool is IPool, ERC20 {
             _removePositionKey(_positionKeys[i]);
         }
 
-        emit RemovedEmptyPositions(address(this), manager, block.timestamp);
+        emit RemovedEmptyPositions(address(this), manager);
     }
 
     /* ========== INTERNAL FUNCTIONS ========== */
@@ -388,7 +387,7 @@ contract Pool is IPool, ERC20 {
 
         _tokenPriceAtLastFeeMint = _tokenPrice(poolValue);
 
-        emit MintedManagerFee(address(this), manager, availableFee, block.timestamp);
+        emit MintedManagerFee(address(this), manager, availableFee);
 
         return poolValue;
     }
@@ -439,9 +438,9 @@ contract Pool is IPool, ERC20 {
 
     /* ========== EVENTS ========== */
 
-    event Deposit(address indexed poolAddress, address indexed userAddress, uint amount, uint timestamp);
-    event Withdraw(address indexed poolAddress, address indexed userAddress, uint numberOfPoolTokens, uint valueWithdrawn, address[] assets, uint[] amountsWithdrawn, uint timestamp);
-    event MintedManagerFee(address indexed poolAddress, address indexed manager, uint amount, uint timestamp);
-    event ExecutedTransaction(address indexed poolAddress, address indexed manager, address to, bool success, uint timestamp);
-    event RemovedEmptyPositions(address indexed poolAddress, address indexed manager, uint timestamp);
+    event Deposit(address indexed poolAddress, address indexed userAddress, uint amount);
+    event Withdraw(address indexed poolAddress, address indexed userAddress, uint numberOfPoolTokens, uint valueWithdrawn, address[] assets, uint[] amountsWithdrawn);
+    event MintedManagerFee(address indexed poolAddress, address indexed manager, uint amount);
+    event ExecutedTransaction(address indexed poolAddress, address indexed manager, address to, bool success);
+    event RemovedEmptyPositions(address indexed poolAddress, address indexed manager);
 }
