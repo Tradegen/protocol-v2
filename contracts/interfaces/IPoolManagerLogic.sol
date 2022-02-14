@@ -3,6 +3,11 @@
 pragma solidity >=0.7.6;
 
 interface IPoolManagerLogic {
+    struct AssetInfo {
+        bool isAvailable;
+        bool useForDeposits;
+    }
+
     /**
     * @dev Returns a list of assets that can be deposited into the pool.
     */
