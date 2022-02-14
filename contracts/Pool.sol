@@ -31,11 +31,6 @@ contract Pool is IPool, ERC20 {
     uint public _performanceFee; //expressed as %
     uint256 public _tokenPriceAtLastFeeMint;
 
-    //Asset positions
-    mapping (uint => address) public _positionKeys;
-    uint public numberOfPositions;
-    mapping (address => uint) public positionToIndex; //maps to (index + 1), with index 0 representing position not found
-
     constructor(string memory _poolName, address _manager, address _addressResolver, address _poolManagerLogic) ERC20(_poolName, "") {
         _manager = manager;
         ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
@@ -68,18 +63,17 @@ contract Pool is IPool, ERC20 {
     */
     function getPositionsAndTotal() public view override returns (address[] memory, uint[] memory, uint) {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
-        address[] memory addresses = new address[](numberOfPositions);
-        uint[] memory balances = new uint[](numberOfPositions);
+        address[] memory addresses = POOL_MANAGER_LOGIC.getAvailableAssets();
+        uint[] memory balances = new uint[](addresses.length);
         uint sum;
 
         //Calculate USD value of each asset
-        for (uint i = 0; i < numberOfPositions; i++)
+        for (uint i = 0; i < addresses.length; i++)
         {
-            balances[i] = IAssetHandler(assetHandlerAddress).getBalance(address(this), _positionKeys[i.add(1)]);
-            addresses[i] = _positionKeys[i.add(1)];
+            balances[i] = IAssetHandler(assetHandlerAddress).getBalance(address(this), addresses[i]);
 
-            uint numberOfDecimals = IAssetHandler(assetHandlerAddress).getDecimals(_positionKeys[i.add(1)]);
-            uint USDperToken = IAssetHandler(assetHandlerAddress).getUSDPrice(_positionKeys[i.add(1)]);
+            uint numberOfDecimals = IAssetHandler(assetHandlerAddress).getDecimals(addresses[i]);
+            uint USDperToken = IAssetHandler(assetHandlerAddress).getUSDPrice(addresses[i]);
             uint positionBalanceInUSD = balances[i].mul(USDperToken).div(10 ** numberOfDecimals);
             sum = sum.add(positionBalanceInUSD);
         }
@@ -104,12 +98,13 @@ contract Pool is IPool, ERC20 {
     */
     function getPoolValue() public view override returns (uint) {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
+        address[] memory addresses = POOL_MANAGER_LOGIC.getAvailableAssets();
         uint sum = 0;
 
         //Get USD value of each asset
-        for (uint i = 1; i <= numberOfPositions; i++)
+        for (uint i = 1; i <= addresses.length; i++)
         {
-            sum = sum.add(getAssetValue(_positionKeys[i], assetHandlerAddress));
+            sum = sum.add(getAssetValue(addresses[i], assetHandlerAddress));
         }
         
         return sum;
@@ -199,8 +194,6 @@ contract Pool is IPool, ERC20 {
 
         IERC20(stableCoinAddress).safeTransferFrom(msg.sender, address(this), amount);
 
-        _addPositionKey(stableCoinAddress);
-
         emit Deposit(address(this), msg.sender, amount);
     }
 
@@ -215,43 +208,28 @@ contract Pool is IPool, ERC20 {
         //Mint manager fee
         uint poolValue = _mintManagerFee();
         uint portion = numberOfPoolTokens.mul(10**18).div(totalSupply());
+        address[] memory addresses = POOL_MANAGER_LOGIC.getAvailableAssets();
 
         //Burn user's pool tokens
         _burn(msg.sender, numberOfPoolTokens);
 
-        uint[] memory amountsWithdrawn = new uint[](numberOfPositions);
-        address[] memory assetsWithdrawn = new address[](numberOfPositions);
+        uint[] memory amountsWithdrawn = new uint[](addresses.length);
 
-        uint assetCount = numberOfPositions;
         //Withdraw user's portion of pool's assets
-        for (uint i = assetCount; i > 0; i--)
+        for (uint i = 0; i < addresses.length; i++)
         {
-            uint portionOfAssetBalance = _withdrawProcessing(_positionKeys[i], portion);
+            uint portionOfAssetBalance = _withdrawProcessing(addresses[i], portion);
 
             if (portionOfAssetBalance > 0)
             {
-                IERC20(_positionKeys[i]).safeTransfer(msg.sender, portionOfAssetBalance);
-
-                amountsWithdrawn[i.sub(1)] = portionOfAssetBalance;
-                assetsWithdrawn[i.sub(1)] = _positionKeys[i];
+                IERC20(addresses[i]).safeTransfer(msg.sender, portionOfAssetBalance);
+                amountsWithdrawn[i] = portionOfAssetBalance;
             }
-
-            //Remove position keys if pool is liquidated
-            if (totalSupply() == 0)
-            {
-                _removePositionKey(_positionKeys[i]);
-            }
-        }
-
-        //Set numberOfPositions to 0 if pool is liquidated
-        if (totalSupply() == 0)
-        {
-            numberOfPositions = 0;
         }
 
         uint valueWithdrawn = poolValue.mul(portion).div(10**18);
 
-        emit Withdraw(address(this), msg.sender, numberOfPoolTokens, valueWithdrawn, assetsWithdrawn, amountsWithdrawn);
+        emit Withdraw(address(this), msg.sender, numberOfPoolTokens, valueWithdrawn, addresses, amountsWithdrawn);
     }
 
     /**
@@ -283,8 +261,6 @@ contract Pool is IPool, ERC20 {
             if (verifier != address(0))
             {
                 require(IAssetHandler(assetHandlerAddress).isValidAsset(to), "Pool: invalid asset");
-
-                _addPositionKey(to);
             }
         }
         
@@ -296,63 +272,10 @@ contract Pool is IPool, ERC20 {
         (bool success, ) = to.call(data);
         require(success, "Pool: transaction failed to execute");
 
-        _addPositionKey(receivedAsset);
-
         emit ExecutedTransaction(address(this), manager, to, success);
     }
 
-    /**
-    * @dev Removes the pool's empty positions from position keys
-    */
-    function removeEmptyPositions() external onlyPoolManager {
-        uint assetCount = numberOfPositions;
-
-        for (uint i = assetCount; i > 0; i--)
-        {
-            _removePositionKey(_positionKeys[i]);
-        }
-
-        emit RemovedEmptyPositions(address(this), manager);
-    }
-
     /* ========== INTERNAL FUNCTIONS ========== */
-
-    /**
-    * @dev Adds the given currency to position keys
-    * @param currency Address of token to add
-    */
-    function _addPositionKey(address currency) internal {
-        //Add token to positionKeys if not currently in positionKeys
-        if (currency != address(0) && positionToIndex[currency] == 0)
-        {
-            numberOfPositions = numberOfPositions.add(1);
-            _positionKeys[numberOfPositions] = currency;
-            positionToIndex[currency] = numberOfPositions;
-        }
-    }
-
-    /**
-    * @dev Removes the given currency to position keys
-    * @param currency Address of token to remove
-    */
-    function _removePositionKey(address currency) internal {
-        require(currency != address(0), "Pool: invalid asset address");
-
-        address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
-
-        //Remove currency from positionKeys if no balance left; account for dust
-        if (IAssetHandler(assetHandlerAddress).getBalance(address(this), currency) < 1000)
-        {
-            if (_positionKeys[positionToIndex[currency]] != _positionKeys[numberOfPositions])
-            {
-                _positionKeys[positionToIndex[currency]] = _positionKeys[numberOfPositions];
-                positionToIndex[_positionKeys[numberOfPositions]] = positionToIndex[currency];
-            }
-            delete _positionKeys[numberOfPositions];
-            delete positionToIndex[currency];
-            numberOfPositions = numberOfPositions.sub(1);
-        }
-    }
 
     /**
     * @dev Calculates the price of a pool token
