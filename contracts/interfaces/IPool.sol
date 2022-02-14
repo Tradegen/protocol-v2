@@ -48,7 +48,7 @@ interface IPool {
 
     /**
     * @dev Deposits the given USD amount into the pool
-    * @notice Call cUSD.approve() before calling this function
+    * @notice Call mcUSD.approve() before calling this function
     * @param amount Amount of USD to deposit into the pool
     */
     function deposit(uint amount) external;
