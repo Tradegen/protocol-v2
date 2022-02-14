@@ -3,21 +3,17 @@
 pragma solidity ^0.8.3;
 pragma experimental ABIEncoderV2;
 
-//Adapters
-import './interfaces/IBaseUbeswapAdapter.sol';
-
 //Inheritance
 import './interfaces/IPool.sol';
 import "./openzeppelin-solidity/contracts/ERC20/ERC20.sol";
 
 //Interfaces
-
 import './interfaces/ISettings.sol';
+import './interfaces/IPoolManagerLogic.sol';
 import './interfaces/IAddressResolver.sol';
 import './interfaces/IAssetHandler.sol';
 import './interfaces/IAssetVerifier.sol';
 import './interfaces/IVerifier.sol';
-import './interfaces/Ubeswap/IStakingRewards.sol';
 
 //Libraries
 import "./openzeppelin-solidity/contracts/SafeMath.sol";
@@ -27,7 +23,8 @@ contract Pool is IPool, ERC20 {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
 
-    IAddressResolver public ADDRESS_RESOLVER;
+    IAddressResolver public immutable ADDRESS_RESOLVER;
+    IPoolManagerLogic public immutable POOL_MANAGER_LOGIC;
    
     string public _name;
     address public override manager;
@@ -39,10 +36,11 @@ contract Pool is IPool, ERC20 {
     uint public numberOfPositions;
     mapping (address => uint) public positionToIndex; //maps to (index + 1), with index 0 representing position not found
 
-    constructor(string memory _poolName, uint performanceFee, address _manager, address _addressResolver) ERC20(_poolName, "") {
+    constructor(string memory _poolName, uint performanceFee, address _manager, address _addressResolver, address _poolManagerLogic) ERC20(_poolName, "") {
         _manager = manager;
         _performanceFee = performanceFee;
         ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
+        POOL_MANAGER_LOGIC = IPoolManagerLogic(_poolManagerLogic);
 
         _tokenPriceAtLastFeeMint = 10**18;
     }
