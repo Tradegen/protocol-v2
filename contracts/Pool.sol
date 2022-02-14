@@ -28,7 +28,6 @@ contract Pool is IPool, ERC20 {
    
     string public _name;
     address public override manager;
-    uint public _performanceFee; //expressed as %
     uint256 public _tokenPriceAtLastFeeMint;
 
     constructor(string memory _poolName, address _manager, address _addressResolver, address _poolManagerLogic) ERC20(_poolName, "") {
@@ -128,14 +127,6 @@ contract Pool is IPool, ERC20 {
     }
 
     /**
-    * @dev Returns the pool's performance fee
-    * @return uint The pool's performance fee
-    */
-    function getPerformanceFee() public view override returns (uint) {
-        return _performanceFee;
-    }
-
-    /**
     * @dev Returns the price of the pool's token
     * @return USD price of the pool's token
     */
@@ -164,7 +155,7 @@ contract Pool is IPool, ERC20 {
             return 0;
         }
 
-        return (currentTokenPrice.sub(_tokenPriceAtLastFeeMint)).mul(totalSupply()).mul(_performanceFee).div(10000).div(currentTokenPrice);
+        return (currentTokenPrice.sub(_tokenPriceAtLastFeeMint)).mul(totalSupply()).mul(POOL_MANAGER_LOGIC.performanceFee()).div(10000).div(currentTokenPrice);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -177,24 +168,25 @@ contract Pool is IPool, ERC20 {
     }
 
     /**
-    * @dev Deposits the given USD amount into the pool
-    * @notice Call cUSD.approve() before calling this function
-    * @param amount Amount of USD to deposit into the pool
+    * @dev Deposits the given depositAsset amount into the pool
+    * @notice Call depositAsset.approve() before calling this function
+    * @param _depositAsset address of the asset to deposit
+    * @param _amount Amount of depositAsset to deposit into the pool
     */
-    function deposit(uint amount) external override {
-        require(amount > 0, "Pool: Deposit must be greater than 0");
-
-        uint poolBalance = getPoolValue();
-        uint numberOfLPTokens = (totalSupply() > 0) ? totalSupply().mul(amount).div(poolBalance) : amount;
-
-        _mint(msg.sender, numberOfLPTokens);
+    function deposit(address _depositAsset, uint _amount) external override {
+        require(POOL_MANAGER_LOGIC.isDepositAsset(_depositAsset), "Pool: asset is not available to deposit.");
+        require(_amount > 0, "Pool: Deposit must be greater than 0");
 
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
-        address stableCoinAddress = IAssetHandler(assetHandlerAddress).getStableCoinAddress();
+        uint USDperToken = IAssetHandler(assetHandlerAddress).getUSDPrice(_depositAsset);
+        uint userUSDValue = _amount.mul(USDperToken).div(10 ** IAssetHandler(assetHandlerAddress).getDecimals(_depositAsset));
+        uint numberOfPoolTokens = (totalSupply() > 0) ? totalSupply().mul(userUSDValue).div(getPoolValue()) : userUSDValue;
 
-        IERC20(stableCoinAddress).safeTransferFrom(msg.sender, address(this), amount);
+        _mint(msg.sender, numberOfPoolTokens);
 
-        emit Deposit(address(this), msg.sender, amount);
+        IERC20(_depositAsset).safeTransferFrom(msg.sender, address(this), _amount);
+
+        emit Deposit(address(this), msg.sender, _amount, userUSDValue);
     }
 
     /**
@@ -361,7 +353,7 @@ contract Pool is IPool, ERC20 {
 
     /* ========== EVENTS ========== */
 
-    event Deposit(address indexed poolAddress, address indexed userAddress, uint amount);
+    event Deposit(address indexed poolAddress, address indexed userAddress, uint amount, uint userUSDValue);
     event Withdraw(address indexed poolAddress, address indexed userAddress, uint numberOfPoolTokens, uint valueWithdrawn, address[] assets, uint[] amountsWithdrawn);
     event MintedManagerFee(address indexed poolAddress, address indexed manager, uint amount);
     event ExecutedTransaction(address indexed poolAddress, address indexed manager, address to, bool success);

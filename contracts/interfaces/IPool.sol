@@ -34,11 +34,12 @@ interface IPool {
     function getUSDBalance(address user) external view returns (uint);
 
     /**
-    * @dev Deposits the given USD amount into the pool
-    * @notice Call mcUSD.approve() before calling this function
-    * @param amount Amount of USD to deposit into the pool
+    * @dev Deposits the given depositAsset amount into the pool
+    * @notice Call depositAsset.approve() before calling this function
+    * @param _depositAsset address of the asset to deposit
+    * @param _amount Amount of depositAsset to deposit into the pool
     */
-    function deposit(uint amount) external;
+    function deposit(address _depositAsset, uint _amount) external;
 
     /**
     * @dev Withdraws the user's full investment
@@ -50,12 +51,6 @@ interface IPool {
     * @dev Withdraws the user's full investment
     */
     function exit() external;
-
-    /**
-    * @dev Returns the pool's performance fee
-    * @return uint The pool's performance fee
-    */
-    function getPerformanceFee() external view returns (uint);
 
     /**
     * @dev Returns the pool's USD value of the asset
