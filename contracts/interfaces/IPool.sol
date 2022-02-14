@@ -65,10 +65,4 @@ interface IPool {
     * @return USD price of the pool's token
     */
     function tokenPrice() external view returns (uint);
-
-    /**
-    * @dev Returns the pool manager's available fees
-    * @return Pool manager's available fees
-    */
-    function availableManagerFee() external view returns (uint);
 }

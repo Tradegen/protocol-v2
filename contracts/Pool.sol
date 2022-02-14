@@ -20,22 +20,22 @@ import "./openzeppelin-solidity/contracts/SafeMath.sol";
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 
 contract Pool is IPool, ERC20 {
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     IAddressResolver public immutable ADDRESS_RESOLVER;
     IPoolManagerLogic public immutable POOL_MANAGER_LOGIC;
    
-    string public _name;
     address public override manager;
-    uint256 public _tokenPriceAtLastFeeMint;
+    uint256 public collectedManagerFees;
+
+    mapping (address => uint256) public userDeposits;
+    uint256 public totalDeposits;
 
     constructor(string memory _poolName, address _manager, address _addressResolver, address _poolManagerLogic) ERC20(_poolName, "") {
         _manager = manager;
         ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
         POOL_MANAGER_LOGIC = IPoolManagerLogic(_poolManagerLogic);
-
-        _tokenPriceAtLastFeeMint = 10**18;
     }
 
     /* ========== VIEWS ========== */
@@ -81,8 +81,8 @@ contract Pool is IPool, ERC20 {
     }
 
     /**
-    * @dev Returns the amount of cUSD the pool has to invest
-    * @return uint Amount of cUSD the pool has available
+    * @dev Returns the amount of mcUSD the pool has to invest
+    * @return uint Amount of mcUSD the pool has available
     */
     function getAvailableFunds() public view override returns (uint) {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
@@ -101,7 +101,7 @@ contract Pool is IPool, ERC20 {
         uint sum = 0;
 
         //Get USD value of each asset
-        for (uint i = 1; i <= addresses.length; i++)
+        for (uint i = 0; i <= addresses.length; i++)
         {
             sum = sum.add(getAssetValue(addresses[i], assetHandlerAddress));
         }
@@ -133,39 +133,15 @@ contract Pool is IPool, ERC20 {
     function tokenPrice() public view override returns (uint) {
         uint poolValue = getPoolValue();
 
-        return _tokenPrice(poolValue);
-    }
-
-    /**
-    * @dev Returns the pool manager's available fees
-    * @return Pool manager's available fees
-    */
-    function availableManagerFee() public view override returns (uint) {
-        uint poolValue = getPoolValue();
-
         if (totalSupply() == 0 || poolValue == 0)
         {
-            return 0;
+            return 10**18;
         }
 
-        uint currentTokenPrice = _tokenPrice(poolValue);
-
-        if (currentTokenPrice <= _tokenPriceAtLastFeeMint)
-        {
-            return 0;
-        }
-
-        return (currentTokenPrice.sub(_tokenPriceAtLastFeeMint)).mul(totalSupply()).mul(POOL_MANAGER_LOGIC.performanceFee()).div(10000).div(currentTokenPrice);
+        return poolValue.mul(10**18).div(totalSupply());
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
-
-    /**
-    * @dev Mints the pool manager's fee
-    */
-    function mintManagerFee() external onlyPoolManager {
-        _mintManagerFee();
-    }
 
     /**
     * @dev Deposits the given depositAsset amount into the pool
@@ -183,6 +159,8 @@ contract Pool is IPool, ERC20 {
         uint numberOfPoolTokens = (totalSupply() > 0) ? totalSupply().mul(userUSDValue).div(getPoolValue()) : userUSDValue;
 
         _mint(msg.sender, numberOfPoolTokens);
+        userDeposits[msg.sender] = userDeposits[msg.sender].add(userUSDValue);
+        totalDeposits = totalDeposits.add(userUSDValue);
 
         IERC20(_depositAsset).safeTransferFrom(msg.sender, address(this), _amount);
 
@@ -197,10 +175,16 @@ contract Pool is IPool, ERC20 {
         require(numberOfPoolTokens > 0, "Pool: number of pool tokens must be greater than 0");
         require(balanceOf(msg.sender) >= numberOfPoolTokens, "Pool: Not enough pool tokens to withdraw");
 
-        //Mint manager fee
-        uint poolValue = _mintManagerFee();
-        uint portion = numberOfPoolTokens.mul(10**18).div(totalSupply());
         address[] memory addresses = POOL_MANAGER_LOGIC.getAvailableAssets();
+        uint poolValue = getPoolValue();
+        uint userValue = balanceOf(msg.sender).mul(poolValue).div(totalSupply());
+        uint valueWithdrawn = poolValue.mul(numberOfPoolTokens).div(totalSupply());
+        uint unrealizedProfits = (userValue > userDeposits[msg.sender]) ? userValue.sub(userDeposits[msg.sender]) : 0;
+
+        unrealizedProfits = unrealizedProfits.mul(numberOfPoolTokens).div(balanceOf(msg.sender));
+        collectedManagerFees = collectedManagerFees.add(unrealizedProfits.mul(POOL_MANAGER_LOGIC.performanceFee()).div(valueWithdrawn).div(10000));
+        totalDeposits = totalDeposits.sub(userDeposits[msg.sender].mul(numberOfPoolTokens).div(balanceOf(msg.sender)));
+        userDeposits[msg.sender] = userDeposits[msg.sender].sub(userDeposits[msg.sender].mul(numberOfPoolTokens).div(balanceOf(msg.sender)));
 
         //Burn user's pool tokens
         _burn(msg.sender, numberOfPoolTokens);
@@ -210,16 +194,16 @@ contract Pool is IPool, ERC20 {
         //Withdraw user's portion of pool's assets
         for (uint i = 0; i < addresses.length; i++)
         {
-            uint portionOfAssetBalance = _withdrawProcessing(addresses[i], portion);
+            uint portionOfAssetBalance = _withdrawProcessing(addresses[i], numberOfPoolTokens.mul(10**18).div(totalSupply()));
+            uint fee = unrealizedProfits.mul(POOL_MANAGER_LOGIC.performanceFee()).mul(portionOfAssetBalance).div(valueWithdrawn).div(10000);
 
             if (portionOfAssetBalance > 0)
             {
-                IERC20(addresses[i]).safeTransfer(msg.sender, portionOfAssetBalance);
+                IERC20(addresses[i]).safeTransfer(manager, fee);
+                IERC20(addresses[i]).safeTransfer(msg.sender, portionOfAssetBalance.sub(fee));
                 amountsWithdrawn[i] = portionOfAssetBalance;
             }
         }
-
-        uint valueWithdrawn = poolValue.mul(portion).div(10**18);
 
         emit Withdraw(address(this), msg.sender, numberOfPoolTokens, valueWithdrawn, addresses, amountsWithdrawn);
     }
@@ -260,6 +244,7 @@ contract Pool is IPool, ERC20 {
         
         (bool valid, address receivedAsset) = IVerifier(verifier).verify(address(ADDRESS_RESOLVER), address(this), to, data);
         require(valid, "Pool: invalid transaction");
+        require(POOL_MANAGER_LOGIC.isAvailableAsset(receivedAsset), "Pool: received asset is not available.");
         
         (bool success, ) = to.call(data);
         require(success, "Pool: transaction failed to execute");
@@ -270,62 +255,19 @@ contract Pool is IPool, ERC20 {
     /* ========== INTERNAL FUNCTIONS ========== */
 
     /**
-    * @dev Calculates the price of a pool token
-    * @param _poolValue Value of the pool in USD
-    * @return Price of a pool token
-    */
-    function _tokenPrice(uint _poolValue) internal view returns (uint) {
-        if (totalSupply() == 0 || _poolValue == 0)
-        {
-            return 10**18;
-        }
-
-        return _poolValue.mul(10**18).div(totalSupply());
-    }
-
-    /**
-    * @dev Mints the pool manager's available fees
-    * @return Pool's USD value
-    */
-    function _mintManagerFee() internal returns(uint) {
-        uint poolValue = getPoolValue();
-
-        uint availableFee = availableManagerFee();
-
-        // Ignore dust when minting performance fees
-        if (availableFee < 10000)
-        {
-            return 0;
-        }
-
-        _mint(manager, availableFee);
-
-        _tokenPriceAtLastFeeMint = _tokenPrice(poolValue);
-
-        emit MintedManagerFee(address(this), manager, availableFee);
-
-        return poolValue;
-    }
-
-    /**
     * @dev Performs additional processing when withdrawing an asset (such as checking for staked tokens)
     * @param asset Address of asset to withdraw
     * @param portion User's portion of pool's asset balance
     * @return Amount of tokens to withdraw
     */
     function _withdrawProcessing(address asset, uint portion) internal returns (uint) {
-        address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
-        address verifier = IAssetHandler(assetHandlerAddress).getVerifier(asset);
+        address verifier = IAssetHandler(ADDRESS_RESOLVER.getContractAddress("AssetHandler")).getVerifier(asset);
 
         (address withdrawAsset, uint withdrawBalance, IAssetVerifier.MultiTransaction[] memory transactions) = IAssetVerifier(verifier).prepareWithdrawal(address(this), asset, portion);
 
         if (transactions.length > 0)
         {
-            uint initialAssetBalance;
-            if (withdrawAsset != address(0))
-            {
-                initialAssetBalance = IERC20(withdrawAsset).balanceOf(address(this));
-            }
+            uint initialAssetBalance = (withdrawAsset != address(0)) ? IERC20(withdrawAsset).balanceOf(address(this)) : 0;
 
             //Execute each transaction
             for (uint i = 0; i < transactions.length; i++)
@@ -355,7 +297,5 @@ contract Pool is IPool, ERC20 {
 
     event Deposit(address indexed poolAddress, address indexed userAddress, uint amount, uint userUSDValue);
     event Withdraw(address indexed poolAddress, address indexed userAddress, uint numberOfPoolTokens, uint valueWithdrawn, address[] assets, uint[] amountsWithdrawn);
-    event MintedManagerFee(address indexed poolAddress, address indexed manager, uint amount);
     event ExecutedTransaction(address indexed poolAddress, address indexed manager, address to, bool success);
-    event RemovedEmptyPositions(address indexed poolAddress, address indexed manager);
 }
