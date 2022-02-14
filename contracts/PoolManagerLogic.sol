@@ -34,6 +34,28 @@ contract PoolManagerLogic is IPoolManagerLogic {
     /* ========== VIEWS ========== */
 
     /**
+    * @dev Given the address of an asset, returns whether this pool can hold the asset.
+    * @param _asset Address of the asset.
+    * @return bool Whether this pool can hold the asset.
+    */
+    function isAvailableAsset(address _asset) external view override returns (bool) {
+        require(_asset != address(0), "PoolManagerLogic: invalid address.");
+
+        return assets[_asset].isAvailable;
+    }
+
+    /**
+    * @dev Given the address of an asset, returns whether the pool accepts the asset for deposits.
+    * @param _asset Address of the asset.
+    * @return bool Whether this pool can accept the asset for deposits.
+    */
+    function isDepositAsset(address _asset) external view override returns (bool) {
+        require(_asset != address(0), "PoolManagerLogic: invalid address.");
+
+        return assets[_asset].useForDeposits;
+    }
+
+    /**
     * @dev Returns a list of assets that can be deposited into the pool.
     */
     function getDepositAssets() external view override returns (address[] memory) {
