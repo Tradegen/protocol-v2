@@ -65,4 +65,25 @@ interface ICappedPool {
     * @return uint Total supply of pool tokens
     */
     function totalSupply() external view returns (uint);
+
+    /**
+    * @dev Returns the number of tokens available for each class
+    * @return (uint, uint, uint, uint) Number of available C1, C2, C3, and C4 tokens
+    */
+    function getAvailableTokensPerClass() external view returns(uint, uint, uint, uint);
+
+    /**
+    * @dev Given the address of a user, returns the number of tokens the user has for each class
+    * @param user Address of the user
+    * @return (uint, uint, uint, uint) Number of available C1, C2, C3, and C4 tokens
+    */
+    function getTokenBalancePerClass(address user) external view returns(uint, uint, uint, uint);
+
+    /**
+    * @dev Returns the total number of tokens the user has across token classes
+    * @notice The balance includes tokens the user has for sale
+    * @param user Address of the user
+    * @return uint Total number of tokens the user has
+    */
+    function balance(address user) external view returns(uint);
 }
