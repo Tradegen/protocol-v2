@@ -4,16 +4,10 @@ pragma solidity >=0.7.6;
 
 interface IPool {
     /**
-    * @dev Returns the name of the pool
-    * @return string The name of the pool
-    */
-    function name() external view returns (string memory);
-
-    /**
     * @dev Return the pool manager's address
     * @return address Address of the pool's manager
     */
-    function getManagerAddress() external view returns (address);
+    function manager() external view returns (address);
 
     /**
     * @dev Returns the currency address and balance of each position the pool has, as well as the cumulative value
@@ -38,13 +32,6 @@ interface IPool {
     * @return uint Balance of the user in USD
     */
     function getUSDBalance(address user) external view returns (uint);
-
-    /**
-    * @dev Returns the number of pool tokens the user has
-    * @param user Address of the user
-    * @return uint Number of pool tokens the user has
-    */
-    function balanceOf(address user) external view returns (uint);
 
     /**
     * @dev Deposits the given USD amount into the pool
@@ -89,10 +76,4 @@ interface IPool {
     * @return Pool manager's available fees
     */
     function availableManagerFee() external view returns (uint);
-
-    /**
-    * @dev Returns the total supply of LP tokens in the pool
-    * @return uint Total supply of LP tokens
-    */
-    function totalSupply() external view returns (uint);
 }
