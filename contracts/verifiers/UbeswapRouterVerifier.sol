@@ -4,7 +4,7 @@ pragma solidity ^0.8.3;
 
 //Libraries
 import "../libraries/TxDataUtils.sol";
-import "../openzeppelin-solidity/SafeMath.sol";
+import "../openzeppelin-solidity/contracts/SafeMath.sol";
 
 //Inheritance
 import "../interfaces/IVerifier.sol";

@@ -2,7 +2,7 @@
 
 pragma solidity >=0.7.6;
 
-interface ILPVerifier {
+interface IUbeswapLPVerifier {
     /**
     * @dev Given the address of a farm, returns the farm's staking token and reward token
     * @param farmAddress Address of the farm

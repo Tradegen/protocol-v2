@@ -4,7 +4,7 @@ pragma solidity ^0.8.3;
 
 //Libraries
 import "../libraries/TxDataUtils.sol";
-import "../openzeppelin-solidity/SafeMath.sol";
+import "../openzeppelin-solidity/contracts/SafeMath.sol";
 
 //Inheritance
 import "../interfaces/IVerifier.sol";
@@ -12,9 +12,8 @@ import "../interfaces/IVerifier.sol";
 //Interfaces
 import "../interfaces/IAddressResolver.sol";
 import "../interfaces/IAssetHandler.sol";
-import "../interfaces/ILPVerifier.sol";
+import "../interfaces/IUbeswapLPVerifier.sol";
 import "../interfaces/Ubeswap/IStakingRewards.sol";
-import "../interfaces/Ubeswap/IUniswapV2Pair.sol";
 
 contract UbeswapFarmVerifier is TxDataUtils, IVerifier {
     using SafeMath for uint;
@@ -34,7 +33,7 @@ contract UbeswapFarmVerifier is TxDataUtils, IVerifier {
         address ubeswapLPVerifierAddress = IAddressResolver(addressResolver).assetVerifiers(2);
 
         //Get assets 
-        (address pair, address rewardToken) = ILPVerifier(ubeswapLPVerifierAddress).getFarmTokens(to);
+        (address pair, address rewardToken) = IUbeswapLPVerifier(ubeswapLPVerifierAddress).getFarmTokens(to);
 
         if (method == bytes4(keccak256("stake(uint256)")))
         {

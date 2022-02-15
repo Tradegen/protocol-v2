@@ -5,21 +5,21 @@ pragma experimental ABIEncoderV2;
 
 //Libraries
 import "../../libraries/TxDataUtils.sol";
-import "../../openzeppelin-solidity/SafeMath.sol";
+import "../../openzeppelin-solidity/contracts/SafeMath.sol";
+import "../../openzeppelin-solidity/contracts/Ownable.sol";
+
 
 //Inheritance
 import "./ERC20Verifier.sol";
-import "../../Ownable.sol";
-import "../../interfaces/ILPVerifier.sol";
+import "../../interfaces/IUbeswapLPVerifier.sol";
 
 //Internal references
 import "../../interfaces/IAddressResolver.sol";
 import "../../interfaces/IAssetHandler.sol";
 import "../../interfaces/IERC20.sol";
-import "../../interfaces/IBaseUbeswapAdapter.sol";
 import "../../interfaces/Ubeswap/IStakingRewards.sol";
 
-contract UbeswapLPVerifier is ERC20Verifier, Ownable, ILPVerifier {
+contract UbeswapLPVerifier is ERC20Verifier, Ownable, IUbeswapLPVerifier {
     using SafeMath for uint;
 
     IAddressResolver public ADDRESS_RESOLVER;
@@ -108,11 +108,10 @@ contract UbeswapLPVerifier is ERC20Verifier, Ownable, ILPVerifier {
         stakingTokens[farmAddress] = pair;
         rewardTokens[farmAddress] = rewardToken;
 
-        emit UpdatedFarmAddress(pair, farmAddress, rewardToken, block.timestamp);
+        emit UpdatedFarmAddress(pair, farmAddress, rewardToken);
     }
 
     /* ========== EVENTS ========== */
 
-    event InitializedFarms(uint numberOfFarms, address[] pairs, uint timestamp);
-    event UpdatedFarmAddress(address pair, address farmAddress, address rewardToken, uint timestamp);
+    event UpdatedFarmAddress(address pair, address farmAddress, address rewardToken);
 }

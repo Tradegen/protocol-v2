@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 
 //Libraries
 import "../../libraries/TxDataUtils.sol";
-import "../../openzeppelin-solidity/SafeMath.sol";
+import "../../openzeppelin-solidity/contracts/SafeMath.sol";
 
 //Inheritance
 import "../../interfaces/IAssetVerifier.sol";
