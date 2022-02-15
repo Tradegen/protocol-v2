@@ -6,11 +6,12 @@ pragma solidity ^0.8.3;
 import './interfaces/ISettings.sol';
 import './interfaces/IAddressResolver.sol';
 import './interfaces/IPoolManagerLogicFactory.sol';
+import './interfaces/IPoolManager.sol';
 
 //Internal references
-import './Pool.sol';
+import './CappedPool.sol';
 
-contract PoolFactory {
+contract CappedPoolFactory {
     IAddressResolver public immutable ADDRESS_RESOLVER;
 
     address[] public pools;
@@ -56,43 +57,46 @@ contract PoolFactory {
     /**
     * @dev Creates a new pool
     * @param _poolName Name of the pool
+    * @param _maxSupply Maximum number of pool tokens
+    * @param _seedPrice Initial price of pool tokens
     * @param _performanceFee Performance fee for the pool
     */
-    function createPool(string memory _poolName, uint _performanceFee) external {
+    function createPool(string memory _poolName, uint _maxSupply, uint _seedPrice, uint _performanceFee) external {
         address settingsAddress = ADDRESS_RESOLVER.getContractAddress("Settings");
+        address poolManagerAddress = ADDRESS_RESOLVER.getContractAddress("PoolManager");
         address poolManagerLogicFactoryAddress = ADDRESS_RESOLVER.getContractAddress("PoolManagerLogicFactory");
-        uint maximumPerformanceFee = ISettings(settingsAddress).getParameterValue("MaximumPerformanceFee");
+        uint maximumNumberOfCappedPoolTokens = ISettings(settingsAddress).getParameterValue("MaximumNumberOfCappedPoolTokens");
+        uint minimumNumberOfCappedPoolTokens = ISettings(settingsAddress).getParameterValue("MinimumNumberOfCappedPoolTokens");
+        uint maximumCappedPoolSeedPrice = ISettings(settingsAddress).getParameterValue("MaximumCappedPoolSeedPrice");
+        uint minimumCappedPoolSeedPrice = ISettings(settingsAddress).getParameterValue("MinimumCappedPoolSeedPrice");
         uint maximumNumberOfPoolsPerUser = ISettings(settingsAddress).getParameterValue("MaximumNumberOfPoolsPerUser");
-
-        require(bytes(_poolName).length < 50, "PoolFactory: Pool name must have less than 50 characters");
-        require(_performanceFee <= maximumPerformanceFee, "PoolFactory: Cannot exceed maximum performance fee");
-        require(_performanceFee >= 0, "PoolFactory: Performance fee must be positive.");
-        require(userToManagedPools[msg.sender].length < maximumNumberOfPoolsPerUser, "PoolFactory: Cannot exceed maximum number of pools per user");
-
+        
+        require(bytes(_poolName).length < 50, "CappedPoolFactory: Pool name must have less than 50 characters");
+        require(_maxSupply <= maximumNumberOfCappedPoolTokens, "CappedPoolFactory: Cannot exceed max supply cap");
+        require(_maxSupply >= minimumNumberOfCappedPoolTokens, "CappedPoolFactory: Cannot have less than min supply cap");
+        require(_seedPrice >= minimumCappedPoolSeedPrice, "CappedPoolFactory: Seed price must be greater than min seed price");
+        require(_seedPrice <= maximumCappedPoolSeedPrice, "CappedPoolFactory: Seed price must be less than max seed price");
+        require(userToManagedPools[msg.sender].length < maximumNumberOfPoolsPerUser, "CappedPoolFactory: Cannot exceed maximum number of pools per user");
+        
         //Create pool
-        Pool temp = new Pool(_poolName, msg.sender, address(ADDRESS_RESOLVER));
+        CappedPool temp = new CappedPool(_poolName, _seedPrice, _maxSupply, msg.sender, address(ADDRESS_RESOLVER), poolManagerAddress);
+        address poolAddress = address(temp);
+
+        //Initialize pool on external contracts
         address poolManagerLogicAddress = IPoolManagerLogicFactory(poolManagerLogicFactoryAddress).createPoolManagerLogic(address(temp), msg.sender, _performanceFee);
         temp.setPoolManagerLogic(poolManagerLogicAddress);
+        IPoolManager(poolManagerAddress).registerPool(poolAddress, _seedPrice);
 
         //Update state variables
-        address poolAddress = address(temp);
         pools.push(poolAddress);
         userToManagedPools[msg.sender].push(pools.length - 1);
         addressToIndex[poolAddress] = pools.length;
         ADDRESS_RESOLVER.addPoolAddress(poolAddress);
 
-        emit CreatedPool(msg.sender, poolAddress, pools.length - 1, _poolName, _performanceFee);
-    }
-
-    /* ========== MODIFIERS ========== */
-
-    modifier isValidPoolAddress(address poolAddress) {
-        require(poolAddress != address(0), "PoolFactory: Invalid pool address");
-        require(addressToIndex[poolAddress] > 0, "PoolFactory: Pool not found");
-        _;
+        emit CreatedCappedPool(msg.sender, poolAddress, pools.length - 1, _poolName, _maxSupply, _seedPrice, _performanceFee);
     }
 
     /* ========== EVENTS ========== */
 
-    event CreatedPool(address indexed managerAddress, address indexed poolAddress, uint poolIndex, string poolName, uint performanceFee);
+    event CreatedCappedPool(address indexed managerAddress, address indexed poolAddress, uint poolIndex, string poolName, uint maxSupply, uint seedPrice, uint performanceFee);
 }

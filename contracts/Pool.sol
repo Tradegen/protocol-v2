@@ -31,8 +31,6 @@ contract Pool is IPool, ERC20 {
 
     mapping (address => uint256) public userDeposits;
     uint256 public totalDeposits;
-    uint256 public unrealizedProfitsAtLastSnapshot;
-    uint256 public timestampAtLastSnapshot;
 
     constructor(string memory _poolName, address _manager, address _addressResolver) ERC20(_poolName, "") {
         _manager = manager;
