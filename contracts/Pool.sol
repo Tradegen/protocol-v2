@@ -10,7 +10,6 @@ import "./openzeppelin-solidity/contracts/ERC20/ERC20.sol";
 //Interfaces
 import './interfaces/ISettings.sol';
 import './interfaces/IPoolManagerLogic.sol';
-import './interfaces/IPoolManager.sol';
 import './interfaces/IAddressResolver.sol';
 import './interfaces/IAssetHandler.sol';
 import './interfaces/IAssetVerifier.sol';
@@ -26,7 +25,6 @@ contract Pool is IPool, ERC20 {
 
     IAddressResolver public immutable ADDRESS_RESOLVER;
     IPoolManagerLogic public POOL_MANAGER_LOGIC;
-    IPoolManager public immutable POOL_MANAGER;
    
     address public override manager;
     uint256 public collectedManagerFees;
@@ -36,10 +34,9 @@ contract Pool is IPool, ERC20 {
     uint256 public unrealizedProfitsAtLastSnapshot;
     uint256 public timestampAtLastSnapshot;
 
-    constructor(string memory _poolName, address _manager, address _addressResolver, address _poolManager) ERC20(_poolName, "") {
+    constructor(string memory _poolName, address _manager, address _addressResolver) ERC20(_poolName, "") {
         _manager = manager;
         ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
-        POOL_MANAGER = IPoolManager(_poolManager);
     }
 
     /* ========== VIEWS ========== */
@@ -164,9 +161,7 @@ contract Pool is IPool, ERC20 {
 
         IERC20(_depositAsset).safeTransferFrom(msg.sender, address(this), _amount);
 
-        POOL_MANAGER.updateWeight(poolValue > totalDeposits ? poolValue.sub(totalDeposits) : 0, _tokenPrice(poolValue));
-
-        emit Deposit(address(this), msg.sender, _amount, userUSDValue);
+        emit Deposit(address(this), msg.sender, _amount, userUSDValue, _depositAsset, _amount);
     }
 
     /**
@@ -207,8 +202,6 @@ contract Pool is IPool, ERC20 {
             }
         }
 
-        POOL_MANAGER.updateWeight(poolValue > totalDeposits ? poolValue.sub(totalDeposits) : 0, _tokenPrice(poolValue));
-
         emit Withdraw(address(this), msg.sender, numberOfPoolTokens, valueWithdrawn, addresses, amountsWithdrawn);
     }
 
@@ -228,24 +221,6 @@ contract Pool is IPool, ERC20 {
         POOL_MANAGER_LOGIC = IPoolManagerLogic(_poolManagerLogicAddress);
 
         emit SetPoolManagerLogic(address(this), _poolManagerLogicAddress);
-    }
-
-    /**
-    * @dev Updates the pool's weight in the farming system based on its current unrealized profits and token price.
-    */
-    function takeSnapshot() external onlyPoolManager {
-        uint256 poolValue = getPoolValue();
-        uint256 unrealizedProfits = (poolValue > totalDeposits) ? poolValue.sub(totalDeposits) : 0;
-
-        require(unrealizedProfits > unrealizedProfitsAtLastSnapshot, "Pool: unrealized profits decreased from last snapshot.");
-        require(block.timestamp.sub(timestampAtLastSnapshot) >= ISettings(ADDRESS_RESOLVER.getContractAddress("Settings")).getParameterValue("TimeBetweenFeeSnapshots"), "Pool: not enough time between snapshots.");
-
-        unrealizedProfitsAtLastSnapshot = unrealizedProfits;
-        timestampAtLastSnapshot = block.timestamp;
-
-        POOL_MANAGER.updateWeight(unrealizedProfits, _tokenPrice(poolValue));
-
-        emit TakeSnapshot(address(this), unrealizedProfits);
     }
 
     /**
@@ -279,9 +254,6 @@ contract Pool is IPool, ERC20 {
         
         (bool success, ) = to.call(data);
         require(success, "Pool: transaction failed to execute");
-
-        uint256 poolValue = getPoolValue();
-        POOL_MANAGER.updateWeight(poolValue > totalDeposits ? poolValue.sub(totalDeposits) : 0, _tokenPrice(poolValue));
 
         emit ExecutedTransaction(address(this), manager, to, success);
     }
@@ -348,9 +320,8 @@ contract Pool is IPool, ERC20 {
 
     /* ========== EVENTS ========== */
 
-    event Deposit(address indexed poolAddress, address indexed userAddress, uint amount, uint userUSDValue);
+    event Deposit(address indexed poolAddress, address indexed userAddress, uint amount, uint userUSDValue, address depositAsset, uint tokensDeposited);
     event Withdraw(address indexed poolAddress, address indexed userAddress, uint numberOfPoolTokens, uint valueWithdrawn, address[] assets, uint[] amountsWithdrawn);
     event ExecutedTransaction(address indexed poolAddress, address indexed manager, address to, bool success);
-    event TakeSnapshot(address indexed poolAddress, uint unrealizedProfits);
     event SetPoolManagerLogic(address indexed poolAddress, address poolManagerLogicAddress);
 }

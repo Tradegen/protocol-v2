@@ -29,10 +29,11 @@ interface ICappedPool {
 
     /**
     * @dev Purchases the given amount of pool tokens
-    * @notice Call cUSD.approve() before calling this function
-    * @param numberOfPoolTokens Number of pool tokens to purchase
+    * @notice Call depositAsset.approve() before calling this function
+    * @param _numberOfPoolTokens Number of pool tokens to purchase
+    * @param _depositAsset Address of the asset to deposit
     */
-    function deposit(uint numberOfPoolTokens) external;
+    function deposit(uint _numberOfPoolTokens, address _depositAsset) external;
 
     /**
     * @dev Withdraws the user's full investment
@@ -86,4 +87,6 @@ interface ICappedPool {
     * @return uint Total number of tokens the user has
     */
     function balance(address user) external view returns(uint);
+
+    function setPoolManagerLogic(address _poolManagerLogicAddress) external;
 }

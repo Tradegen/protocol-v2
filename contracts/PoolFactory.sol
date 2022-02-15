@@ -61,7 +61,6 @@ contract PoolFactory {
     function createPool(string memory _poolName, uint _performanceFee) external {
         address settingsAddress = ADDRESS_RESOLVER.getContractAddress("Settings");
         address poolManagerLogicFactoryAddress = ADDRESS_RESOLVER.getContractAddress("PoolManagerLogicFactory");
-        address poolManagerAddress = ADDRESS_RESOLVER.getContractAddress("PoolManager");
         uint maximumPerformanceFee = ISettings(settingsAddress).getParameterValue("MaximumPerformanceFee");
         uint maximumNumberOfPoolsPerUser = ISettings(settingsAddress).getParameterValue("MaximumNumberOfPoolsPerUser");
 
@@ -71,7 +70,7 @@ contract PoolFactory {
         require(userToManagedPools[msg.sender].length < maximumNumberOfPoolsPerUser, "PoolFactory: Cannot exceed maximum number of pools per user");
 
         //Create pool
-        Pool temp = new Pool(_poolName, msg.sender, address(ADDRESS_RESOLVER), poolManagerAddress);
+        Pool temp = new Pool(_poolName, msg.sender, address(ADDRESS_RESOLVER));
         address poolManagerLogicAddress = IPoolManagerLogicFactory(poolManagerLogicFactoryAddress).createPoolManagerLogic(address(temp), msg.sender, _performanceFee);
         temp.setPoolManagerLogic(poolManagerLogicAddress);
 
