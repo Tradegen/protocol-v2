@@ -32,7 +32,7 @@ contract CappedPool is ICappedPool, ERC1155 {
    
     //Pool info
     string public name;
-    address public manager;
+    address public override manager;
     uint public maxSupply;
     uint public seedPrice;
     uint256 public collectedManagerFees;

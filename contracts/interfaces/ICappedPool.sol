@@ -4,6 +4,12 @@ pragma solidity >=0.7.6;
 
 interface ICappedPool {
     /**
+    * @dev Return the pool manager's address
+    * @return address Address of the pool's manager
+    */
+    function manager() external view returns (address);
+    
+    /**
     * @dev Returns the currency address and balance of each position the pool has, as well as the cumulative value
     * @return (address[], uint[], uint) Currency address and balance of each position the pool has, and the cumulative value of positions
     */
