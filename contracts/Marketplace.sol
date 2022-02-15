@@ -47,7 +47,7 @@ contract Marketplace is IMarketplace, ERC1155Holder {
     */
     function getListingIndex(address user, address poolAddress) external view override returns (uint) {
         require(user != address(0), "Marketplace: invalid user address");
-        require(poolAddress != address(0), "Marketplace: invalid asset");
+        require(poolAddress != address(0), "Marketplace: invalid pool address");
 
         return userToListingIndex[poolAddress][user];
     }
@@ -90,7 +90,7 @@ contract Marketplace is IMarketplace, ERC1155Holder {
         //Transfer mcUSD to seller
         IERC20(stableCoinAddress).safeTransfer(marketplaceListings[index].seller, amountOfUSD.mul(10000 - protocolFee - managerFee).div(10000));
 
-        //TODO: implement xTGEN contract and and swap protocol fee for TGEN
+        //TODO: implement xTGEN contract and swap protocol fee for TGEN
 
         //Pay manager fee
         IERC20(stableCoinAddress).safeTransfer(ICappedPool(poolAddress).manager(), amountOfUSD.mul(managerFee).div(10000));
@@ -120,7 +120,7 @@ contract Marketplace is IMarketplace, ERC1155Holder {
     * @param price USD per token
     */
     function createListing(address poolAddress, uint tokenClass, uint numberOfTokens, uint price) external override isValidPool(poolAddress) {
-        require(userToListingIndex[poolAddress][msg.sender] == 0, "Already have a marketplace listing for this asset");
+        require(userToListingIndex[poolAddress][msg.sender] == 0, "Already have a marketplace listing for this pool");
         require(price > 0, "Price must be greater than 0");
         require(tokenClass > 0 && tokenClass < 5, "Token class must be between 1 and 4");
         require(numberOfTokens > 0 && numberOfTokens <= IERC1155(poolAddress).balanceOf(msg.sender, tokenClass), "Quantity out of bounds");
@@ -197,14 +197,16 @@ contract Marketplace is IMarketplace, ERC1155Holder {
     /* ========== INTERNAL FUNCTIONS ========== */
 
     /**
-    * @dev Sets the marketplace listing's 'exists' variable to false and resets quantity
-    * @param index Index of the marketplace listing in the asset's listings array
+    * @dev Sets the marketplace listing's 'exists' variable to false and resets quantity.
+    * @param user Address of the seller.
+    * @param poolAddress Address of the pool's token.
+    * @param index Index of the marketplace listing.
     */
-    function _removeListing(address user, address asset, uint index) internal {
+    function _removeListing(address user, address poolAddress, uint index) internal {
         marketplaceListings[index].exists = false;
         marketplaceListings[index].numberOfTokens = 0;
 
-        userToListingIndex[asset][user] = 0;
+        userToListingIndex[poolAddress][user] = 0;
     }
 
     /* ========== MODIFIERS ========== */
@@ -216,8 +218,8 @@ contract Marketplace is IMarketplace, ERC1155Holder {
         _;
     }
 
-    modifier onlySeller(address asset, uint index) {
-        require(index == userToListingIndex[asset][msg.sender],
+    modifier onlySeller(address poolAddress, uint index) {
+        require(index == userToListingIndex[poolAddress][msg.sender],
                 "Marketplace: Only the seller can call this function");
         _;
     }
