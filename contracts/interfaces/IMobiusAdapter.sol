@@ -12,9 +12,9 @@ interface IMobiusAdapter {
 
     /**
     * @dev Returns the staking token address for each available farm on Mobius
-    * @return address[] The staking token address for each available farm
+    * @return (address[], uint[]) The staking token address and farm ID for each available farm
     */
-    function getAvailableMobiusFarms() external view returns (address[] memory);
+    function getAvailableMobiusFarms() external view returns (address[] memory, uint[] memory);
 
     /**
     * @dev Checks whether the given liquidity pair has a farm on Mobius
@@ -38,13 +38,4 @@ interface IMobiusAdapter {
     * @return uint Amount of MOBI available
     */
     function getAvailableRewards(address poolAddress, uint pid) external view returns (uint);
-
-    /**
-    * @dev Calculates the amount of tokens in a pair
-    * @param tokenA First token in pair
-    * @param tokenB Second token in pair
-    * @param numberOfLPTokens Number of LP tokens for the given pair
-    * @return (uint, uint) The number of tokens for tokenA and tokenB
-    */
-    function getTokenAmountsFromPair(address tokenA, address tokenB, uint numberOfLPTokens) external view returns (uint, uint);
 }
