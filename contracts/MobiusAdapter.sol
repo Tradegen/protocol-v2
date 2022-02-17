@@ -47,11 +47,22 @@ contract MobiusAdapter is IMobiusAdapter, Ownable {
     /* ========== VIEWS ========== */
 
     /**
+    * @dev Returns the address of the LP token's Swap contract
+    * @param pair Address of the liquidity pair
+    * @return address Address of the LP token's Swap contract
+    */
+    function getSwapAddress(address pair) external view override returns (address) {
+        require(pair != address(0), "MobiusAdapter: invalid pair address");
+
+        return mobiusAssets[pair].swapAddress;
+    }
+
+    /**
     * @dev Given an input asset address, returns the price of the asset in USD
     * @param currencyKey Address of the asset
-    * @return uint Price of the asset
+    * @return price Price of the asset
     */
-    function getPrice(address currencyKey) external view override returns(uint) {
+    function getPrice(address currencyKey) external view override returns(uint price) {
         require(currencyKey != address(0), "Invalid currency key");
 
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
@@ -59,10 +70,12 @@ contract MobiusAdapter is IMobiusAdapter, Ownable {
 
         require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKey), "MobiusAdapter: Currency is not available");
 
-        uint mobiusPrice = ISwap(mobiusAssets[currencyKey].swapAddress).getVirtualPrice();
-        uint ubeswapDenominationAssetPrice = IBaseUbeswapAdapter(ubeswapAdapterAddress).getPrice(equivalentUbeswapAsset[mobiusAssets[currencyKey]].denominationAsset);
+        price = IBaseUbeswapAdapter(ubeswapAdapterAddress).getPrice(equivalentUbeswapAsset[mobiusAssets[currencyKey].denominationAsset]);
 
-        return ubeswapDenominationAssetPrice.mul(mobiusPrice).div(10 ** 18);
+        if (mobiusAssets[currencyKey].denominationAsset != currencyKey) {
+            uint mobiusPrice = ISwap(mobiusAssets[currencyKey].swapAddress).getVirtualPrice();
+            price = price.mul(mobiusPrice).div(10 ** 18);
+        }
     }
 
     /**
@@ -73,7 +86,7 @@ contract MobiusAdapter is IMobiusAdapter, Ownable {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
         address[] memory assetAddresses = IAssetHandler(assetHandlerAddress).getAvailableAssetsForType(3);
         address[] memory stakingTokenAddresses = new address[](assetAddresses.length);
-        uint[] memory farmIDs = new address[](assetAddresses.length);
+        uint[] memory farmIDs = new uint[](assetAddresses.length);
 
         //Get farm IDs
         for (uint i = 0; i < assetAddresses.length; i++)
@@ -142,7 +155,7 @@ contract MobiusAdapter is IMobiusAdapter, Ownable {
         require(IAssetHandler(assetHandlerAddress).isValidAsset(_denominationAsset), "MobiusAdapter: denomination asset is not available");
         require(IAssetHandler(assetHandlerAddress).isValidAsset(_asset), "MobiusAdapter: asset is not available");
 
-        mobiusAssets[_asset] = MobiusAsset(_stakingToken, _denominationAsset, _pid);
+        mobiusAssets[_asset] = MobiusAsset(_stakingToken, _denominationAsset, _swapAddress, _pid);
         swapAddresses[_denominationAsset][_asset] = _swapAddress;
         swapAddresses[_asset][_denominationAsset] = _swapAddress;
 
@@ -160,6 +173,6 @@ contract MobiusAdapter is IMobiusAdapter, Ownable {
 
     /* ========== EVENTS ========== */
 
-    event AddedMobiusAsset(address asset, address stakingToken, address denominationAsset, uint pid);
+    event AddedMobiusAsset(address asset, address stakingToken, address denominationAsset, address swapAddress, uint pid);
     event SetEquivalentUbeswapAsset(address denominationAsset, address ubeswapAsset);
 }

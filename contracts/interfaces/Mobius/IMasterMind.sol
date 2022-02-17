@@ -27,5 +27,5 @@ interface IMasterMind {
     function withdraw(uint256 _pid, uint256 _amount) external;
 
     // View function to see pending NERVE on frontend.
-    function pendingNerve(uint256 _pid, address _user) external view;
+    function pendingNerve(uint256 _pid, address _user) external view returns(uint256);
 }

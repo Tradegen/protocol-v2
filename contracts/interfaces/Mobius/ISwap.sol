@@ -13,5 +13,5 @@ interface ISwap {
         @notice Returns address of lp token
         @return address of lp token
      */
-     function getLpToken() external view returns (address)
+     function getLpToken() external view returns (address);
 }

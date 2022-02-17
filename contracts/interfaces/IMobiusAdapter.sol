@@ -6,9 +6,9 @@ interface IMobiusAdapter {
     /**
     * @dev Given an input asset address, returns the price of the asset in USD
     * @param currencyKey Address of the asset
-    * @return uint Price of the asset
+    * @return price Price of the asset
     */
-    function getPrice(address currencyKey) external view returns (uint);
+    function getPrice(address currencyKey) external view returns (uint price);
 
     /**
     * @dev Returns the staking token address for each available farm on Mobius
@@ -38,4 +38,11 @@ interface IMobiusAdapter {
     * @return uint Amount of MOBI available
     */
     function getAvailableRewards(address poolAddress, uint pid) external view returns (uint);
+
+    /**
+    * @dev Returns the address of the LP token's Swap contract
+    * @param pair Address of the liquidity pair
+    * @return address Address of the LP token's Swap contract
+    */
+    function getSwapAddress(address pair) external view returns (address);
 }

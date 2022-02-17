@@ -9,18 +9,18 @@ import './interfaces/IPriceAggregator.sol';
 import './interfaces/IBaseUbeswapAdapter.sol';
 import './interfaces/IAddressResolver.sol';
 
-contract ERC20PriceAggregator is IPriceAggregator {
+contract UbeswapERC20PriceAggregator is IPriceAggregator {
 
     IAddressResolver public ADDRESS_RESOLVER;
 
-    constructor(IAddressResolver addressResolver) {
-        ADDRESS_RESOLVER = addressResolver;
+    constructor(address _addressResolver) {
+        ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
     }
 
     /* ========== VIEWS ========== */
 
     function getUSDPrice(address asset) external view override returns (uint) {
-        require(asset != address(0), "ERC20PriceAggregator: invalid asset address");
+        require(asset != address(0), "UbeswapERC20PriceAggregator: invalid asset address");
 
         address baseUbeswapAdapterAddress = ADDRESS_RESOLVER.getContractAddress("BaseUbeswapAdapter");
         return IBaseUbeswapAdapter(baseUbeswapAdapterAddress).getPrice(asset);
