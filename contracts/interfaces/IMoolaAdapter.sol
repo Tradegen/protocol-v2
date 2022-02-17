@@ -37,4 +37,11 @@ interface IMoolaAdapter {
     * @return (address, address) Address of the lending pool's interest-bearing token and address of the underlying token
     */
     function getAssetsForLendingPool(address lendingPoolAddress) external view returns (address, address);
+
+    /**
+    * @dev Given the address of an interest-bearing token, returns the token's underlying asset
+    * @param interestBearingToken Address of the interest-bearing token
+    * @return address Address of the token's underlying asset
+    */
+    function getUnderlyingAsset(address interestBearingToken) external view returns (address);
 }

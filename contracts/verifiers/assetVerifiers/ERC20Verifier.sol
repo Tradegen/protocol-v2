@@ -42,7 +42,7 @@ contract ERC20Verifier is TxDataUtils, IVerifier, IAssetVerifier {
             //Checks if the spender is an approved address
             require(verifier != address(0), "ERC20Verifier: unsupported spender approval"); 
 
-            emit Approve(pool, spender, amount, block.timestamp);
+            emit Approve(pool, spender, amount);
 
             return (true, address(0));
         }
@@ -84,5 +84,5 @@ contract ERC20Verifier is TxDataUtils, IVerifier, IAssetVerifier {
 
     /* ========== EVENTS ========== */
 
-    event Approve(address pool, address spender, uint amount, uint timestamp);
+    event Approve(address pool, address spender, uint amount);
 }

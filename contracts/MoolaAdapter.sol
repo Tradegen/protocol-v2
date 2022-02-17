@@ -121,6 +121,17 @@ contract MoolaAdapter is IMoolaAdapter, Ownable {
         return (lendingPools[lendingPoolAddress], moolaAssets[lendingPools[lendingPoolAddress]].underlyingAsset);
     }
 
+    /**
+    * @dev Given the address of an interest-bearing token, returns the token's underlying asset
+    * @param interestBearingToken Address of the interest-bearing token
+    * @return address Address of the token's underlying asset
+    */
+    function getUnderlyingAsset(address interestBearingToken) external view override returns (address) {
+        require(interestBearingToken != address(0), "MoolaAdapter: invalid address for interest-bearing token.");
+
+        return moolaAssets[interestBearingToken].underlyingAsset;
+    }
+
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     function addMoolaAsset(address _underlyingAsset, address _interestBearingToken, address _lendingPool) external onlyOwner {

@@ -4,7 +4,6 @@ pragma solidity ^0.8.3;
 
 //Libraries
 import "../libraries/TxDataUtils.sol";
-import "../openzeppelin-solidity/contracts/SafeMath.sol";
 
 //Inheritance
 import "../interfaces/IVerifier.sol";
@@ -13,12 +12,8 @@ import "../interfaces/IVerifier.sol";
 import "../interfaces/IAddressResolver.sol";
 import "../interfaces/IAssetHandler.sol";
 import "../interfaces/IMoolaAdapter.sol";
-import "../interfaces/IUbeswapLPVerifier.sol";
-import "../interfaces/Ubeswap/IStakingRewards.sol";
 
 contract MoolaLendingPoolVerifier is TxDataUtils, IVerifier {
-    using SafeMath for uint;
-
     /**
     * @dev Parses the transaction data to make sure the transaction is valid
     * @param addressResolver Address of AddressResolver contract
