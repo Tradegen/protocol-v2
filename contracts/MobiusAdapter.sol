@@ -4,15 +4,9 @@ pragma solidity ^0.8.3;
 pragma experimental ABIEncoderV2;
 
 //Interfaces
-import './interfaces/Ubeswap/IUniswapV2Router02.sol';
 import './interfaces/IERC20.sol';
 import './interfaces/IAssetHandler.sol';
 import './interfaces/IAddressResolver.sol';
-import './interfaces/IUbeswapPathManager.sol';
-import './interfaces/Ubeswap/IUbeswapPoolManager.sol';
-import './interfaces/Ubeswap/IStakingRewards.sol';
-import './interfaces/Ubeswap/IUniswapV2Factory.sol';
-import './interfaces/Ubeswap/IStakingRewards.sol';
 import './interfaces/Mobius/ISwap.sol';
 import './interfaces/Mobius/IMasterMind.sol';
 import './interfaces/IBaseUbeswapAdapter.sol';
