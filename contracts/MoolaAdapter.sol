@@ -30,6 +30,7 @@ contract MoolaAdapter is IMoolaAdapter, Ownable {
 
     mapping (address => MoolaAsset) public moolaAssets; // interest-bearing token address => token info
     mapping (address => address) public equivalentMoolaAsset; //underlying asset => asset's interest-bearing token on Moola
+    mapping (address => address) public lendingPools; // lending pool address => interest-bearing token address
 
     constructor(address _addressResolver) Ownable() {
         ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
@@ -109,6 +110,17 @@ contract MoolaAdapter is IMoolaAdapter, Ownable {
         return address(0);
     }
 
+    /**
+    * @dev Given the address of a lending pool, returns the lending pool's interest-bearing token and underlying token
+    * @param lendingPoolAddress Address of the lending pool.
+    * @return (address, address) Address of the lending pool's interest-bearing token and address of the underlying token
+    */
+    function getAssetsForLendingPool(address lendingPoolAddress) external view override returns (address, address) {
+        require(lendingPoolAddress != address(0), "MoolaAdapter: invalid address for lending pool.");
+
+        return (lendingPools[lendingPoolAddress], moolaAssets[lendingPools[lendingPoolAddress]].underlyingAsset);
+    }
+
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     function addMoolaAsset(address _underlyingAsset, address _interestBearingToken, address _lendingPool) external onlyOwner {
@@ -123,6 +135,7 @@ contract MoolaAdapter is IMoolaAdapter, Ownable {
 
         moolaAssets[_interestBearingToken] = MoolaAsset(_lendingPool, _underlyingAsset);
         equivalentMoolaAsset[_underlyingAsset] = _interestBearingToken;
+        lendingPools[_lendingPool] = _interestBearingToken; 
 
         emit AddedMoolaAsset(_underlyingAsset, _interestBearingToken, _lendingPool);
     }

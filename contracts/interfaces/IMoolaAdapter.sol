@@ -30,4 +30,11 @@ interface IMoolaAdapter {
     * @return address Address of the token's lending pool contract
     */
     function getLendingPoolAddress(address token) external view returns (address);
+
+    /**
+    * @dev Given the address of a lending pool, returns the lending pool's interest-bearing token and underlying token
+    * @param lendingPoolAddress Address of the lending pool.
+    * @return (address, address) Address of the lending pool's interest-bearing token and address of the underlying token
+    */
+    function getAssetsForLendingPool(address lendingPoolAddress) external view returns (address, address);
 }
