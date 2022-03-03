@@ -7,7 +7,7 @@ import "./interfaces/IAssetHandler.sol";
 import './openzeppelin-solidity/contracts/Ownable.sol';
 
 //Interfaces
-import './interfaces/IPriceAggregator.sol';
+import './interfaces/IPriceCalculator.sol';
 import './interfaces/IAddressResolver.sol';
 import './interfaces/IAssetVerifier.sol';
 
@@ -21,12 +21,12 @@ contract AssetHandler is IAssetHandler, Ownable {
 
     address public stableCoinAddress;
     mapping (address => uint) public assetTypes;
-    mapping (uint => address) public assetTypeToPriceAggregator;
+    mapping (uint => address) public assetTypeToPriceCalculator;
     mapping (uint => uint) public numberOfAvailableAssetsForType;
     mapping (uint => mapping (uint => address)) public availableAssetsForType;
 
-    constructor(IAddressResolver addressResolver) Ownable() {
-        ADDRESS_RESOLVER = addressResolver;
+    constructor(address _addressResolver) Ownable() {
+        ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
     }
 
     /* ========== VIEWS ========== */
@@ -39,7 +39,7 @@ contract AssetHandler is IAssetHandler, Ownable {
     function getUSDPrice(address asset) external view override isValidAddress(asset) returns (uint) {
         require(assetTypes[asset] > 0, "AssetHandler: asset not supported");
         
-        return IPriceAggregator(assetTypeToPriceAggregator[assetTypes[asset]]).getUSDPrice(asset);
+        return IPriceCalculator(assetTypeToPriceCalculator[assetTypes[asset]]).getUSDPrice(asset);
     }
 
     /**
@@ -188,15 +188,15 @@ contract AssetHandler is IAssetHandler, Ownable {
     /**
     * @dev Adds a new asset type
     * @param assetType Type of the asset
-    * @param priceAggregator Address of the asset's price aggregator
+    * @param priceCalculator Address of the asset's price calculator
     */
-    function addAssetType(uint assetType, address priceAggregator) external onlyOwner isValidAddress(priceAggregator) {
+    function addAssetType(uint assetType, address priceCalculator) external onlyOwner isValidAddress(priceCalculator) {
         require(assetType > 0, "AssetHandler: assetType must be greater than 0");
-        require(assetTypeToPriceAggregator[assetType] == address(0), "AssetHandler: asset type already exists");
+        require(assetTypeToPriceCalculator[assetType] == address(0), "AssetHandler: asset type already exists");
 
-        assetTypeToPriceAggregator[assetType] = priceAggregator;
+        assetTypeToPriceCalculator[assetType] = priceCalculator;
 
-        emit AddedAssetType(assetType, priceAggregator);
+        emit AddedAssetType(assetType, priceCalculator);
     }
 
     /* ========== MODIFIERS ========== */
@@ -211,5 +211,5 @@ contract AssetHandler is IAssetHandler, Ownable {
     event AddedAsset(uint assetType, address currencyKey);
     event RemovedAsset(uint assetType, address currencyKey);
     event UpdatedStableCoinAddress(address oldAddress, address stableCurrencyAddress);
-    event AddedAssetType(uint assetType, address priceAggregator); 
+    event AddedAssetType(uint assetType, address priceCalculator); 
 }

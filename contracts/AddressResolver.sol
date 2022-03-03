@@ -27,7 +27,7 @@ contract AddressResolver is IAddressResolver, Ownable {
     * @return address The address associated with the given contract name
     */
     function getContractAddress(string memory contractName) external view override returns(address) {
-        require (contractAddresses[contractName] != address(0), "AddressResolver: contract not found");
+        require (contractAddresses[contractName] != address(0), "AddressResolver: contract not found.");
         
         return contractAddresses[contractName];
     }
@@ -72,7 +72,7 @@ contract AddressResolver is IAddressResolver, Ownable {
     * @param verifier Address of the contract's verifier
     */
     function setAssetVerifier(uint assetType, address verifier) external onlyOwner isValidAddress(verifier) {
-        require(assetType > 0, "AddressResolver: asset type must be greater than 0");
+        require(assetType > 0, "AddressResolver: asset type must be greater than 0.");
 
         assetVerifiers[assetType] = verifier;
 
@@ -84,7 +84,7 @@ contract AddressResolver is IAddressResolver, Ownable {
     * @param poolAddress The address of the pool
     */
     function addPoolAddress(address poolAddress) external override onlyPoolFactory isValidAddress(poolAddress) {
-        require(poolAddresses[poolAddress] != poolAddress, "Pool already exists");
+        require(poolAddresses[poolAddress] != poolAddress, "AddressResolver: Pool already exists.");
 
         poolAddresses[poolAddress] = poolAddress;
 
@@ -94,12 +94,12 @@ contract AddressResolver is IAddressResolver, Ownable {
     /* ========== MODIFIERS ========== */
 
     modifier isValidAddress(address addressToCheck) {
-        require(addressToCheck != address(0), "Address is not valid");
+        require(addressToCheck != address(0), "AddressResolver: Address is not valid.");
         _;
     }
 
     modifier onlyPoolFactory() {
-        require(msg.sender == contractAddresses["PoolFactory"], "AddressResolver: Only the PoolFactory contract can call this function");
+        require(msg.sender == contractAddresses["PoolFactory"], "AddressResolver: Only the PoolFactory contract can call this function.");
         _;
     }
 

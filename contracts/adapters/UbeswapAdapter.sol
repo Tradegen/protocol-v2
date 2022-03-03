@@ -4,23 +4,23 @@ pragma solidity ^0.8.3;
 pragma experimental ABIEncoderV2;
 
 //Interfaces
-import './interfaces/Ubeswap/IUniswapV2Router02.sol';
-import './interfaces/IERC20.sol';
-import './interfaces/IAssetHandler.sol';
-import './interfaces/IAddressResolver.sol';
-import './interfaces/IUbeswapPathManager.sol';
-import './interfaces/Ubeswap/IUbeswapPoolManager.sol';
-import './interfaces/Ubeswap/IStakingRewards.sol';
-import './interfaces/Ubeswap/IUniswapV2Factory.sol';
-import './interfaces/Ubeswap/IStakingRewards.sol';
+import '../interfaces/Ubeswap/IUniswapV2Router02.sol';
+import '../interfaces/IERC20.sol';
+import '../interfaces/IAssetHandler.sol';
+import '../interfaces/IAddressResolver.sol';
+import '../interfaces/IUbeswapPathManager.sol';
+import '../interfaces/Ubeswap/IUbeswapPoolManager.sol';
+import '../interfaces/Ubeswap/IStakingRewards.sol';
+import '../interfaces/Ubeswap/IUniswapV2Factory.sol';
+import '../interfaces/Ubeswap/IStakingRewards.sol';
 
 //Inheritance
-import './interfaces/IBaseUbeswapAdapter.sol';
+import '../interfaces/IUbeswapAdapter.sol';
 
 //Libraries
-import './openzeppelin-solidity/contracts/SafeMath.sol';
+import '../openzeppelin-solidity/contracts/SafeMath.sol';
 
-contract BaseUbeswapAdapter is IBaseUbeswapAdapter {
+contract UbeswapAdapter is IUbeswapAdapter {
     using SafeMath for uint;
 
     // Max slippage percent allowed
@@ -50,8 +50,8 @@ contract BaseUbeswapAdapter is IBaseUbeswapAdapter {
             return 10 ** _getDecimals(currencyKey);
         }
 
-        require(currencyKey != address(0), "Invalid currency key");
-        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKey), "BaseUbeswapAdapter: Currency is not available");
+        require(currencyKey != address(0), "UbeswapAdapter: Invalid currency key");
+        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKey), "UbeswapAdapter: Currency is not available");
 
         address ubeswapPathManagerAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapPathManager");
         address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(currencyKey, stableCoinAddress);
@@ -73,11 +73,11 @@ contract BaseUbeswapAdapter is IBaseUbeswapAdapter {
         address ubeswapRouterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapRouter");
         address stableCoinAddress = IAssetHandler(assetHandlerAddress).getStableCoinAddress();
 
-        require(currencyKeyIn != address(0), "Invalid currency key in");
-        require(currencyKeyOut != address(0), "Invalid currency key out");
-        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKeyIn) || currencyKeyIn == stableCoinAddress, "BaseUbeswapAdapter: CurrencyKeyIn is not available");
-        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKeyOut) || currencyKeyOut == stableCoinAddress, "BaseUbeswapAdapter: CurrencyKeyOut is not available");
-        require(numberOfTokens > 0, "Number of tokens must be greater than 0");
+        require(currencyKeyIn != address(0), "UbeswapAdapter: Invalid currency key in");
+        require(currencyKeyOut != address(0), "UbeswapAdapter: Invalid currency key out");
+        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKeyIn) || currencyKeyIn == stableCoinAddress, "UbeswapAdapter: CurrencyKeyIn is not available");
+        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKeyOut) || currencyKeyOut == stableCoinAddress, "UbeswapAdapter: CurrencyKeyOut is not available");
+        require(numberOfTokens > 0, "UbeswapAdapter: Number of tokens must be greater than 0");
 
         address ubeswapPathManagerAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapPathManager");
         address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(currencyKeyIn, currencyKeyOut);
@@ -98,11 +98,11 @@ contract BaseUbeswapAdapter is IBaseUbeswapAdapter {
         address ubeswapRouterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapRouter");
         address stableCoinAddress = IAssetHandler(assetHandlerAddress).getStableCoinAddress();
 
-        require(currencyKeyIn != address(0), "Invalid currency key in");
-        require(currencyKeyOut != address(0), "Invalid currency key out");
-        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKeyIn) || currencyKeyIn == stableCoinAddress, "BaseUbeswapAdapter: CurrencyKeyIn is not available");
-        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKeyOut) || currencyKeyOut == stableCoinAddress, "BaseUbeswapAdapter: CurrencyKeyOut is not available");
-        require(numberOfTokens > 0, "Number of tokens must be greater than 0");
+        require(currencyKeyIn != address(0), "UbeswapAdapter: Invalid currency key in");
+        require(currencyKeyOut != address(0), "UbeswapAdapter: Invalid currency key out");
+        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKeyIn) || currencyKeyIn == stableCoinAddress, "UbeswapAdapter: CurrencyKeyIn is not available");
+        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKeyOut) || currencyKeyOut == stableCoinAddress, "UbeswapAdapter: CurrencyKeyOut is not available");
+        require(numberOfTokens > 0, "UbeswapAdapter: Number of tokens must be greater than 0");
 
         address ubeswapPathManagerAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapPathManager");
         address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(currencyKeyIn, currencyKeyOut);
@@ -144,7 +144,7 @@ contract BaseUbeswapAdapter is IBaseUbeswapAdapter {
     * @return bool Whether the pair has a farm
     */
     function checkIfLPTokenHasFarm(address pair) external view override returns (bool) {
-        require(pair != address(0), "BaseUbeswapAdapter: invalid pair address");
+        require(pair != address(0), "UbeswapAdapter: invalid pair address");
 
         address ubeswapPoolManagerAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapPoolManager");
         IUbeswapPoolManager.PoolInfo memory ubeswapFarm = IUbeswapPoolManager(ubeswapPoolManagerAddress).pools(pair);
@@ -159,8 +159,8 @@ contract BaseUbeswapAdapter is IBaseUbeswapAdapter {
     * @return address The pair's address
     */
     function getPair(address tokenA, address tokenB) public view override returns (address) {
-        require(tokenA != address(0), "BaseUbeswapAdapter: invalid address for tokenA");
-        require(tokenB != address(0), "BaseUbeswapAdapter: invalid address for tokenB");
+        require(tokenA != address(0), "UbeswapAdapter: invalid address for tokenA");
+        require(tokenB != address(0), "UbeswapAdapter: invalid address for tokenB");
 
         address uniswapV2FactoryAddress = ADDRESS_RESOLVER.getContractAddress("UniswapV2Factory");
 
@@ -174,7 +174,7 @@ contract BaseUbeswapAdapter is IBaseUbeswapAdapter {
     * @return uint Amount of UBE available
     */
     function getAvailableRewards(address poolAddress, address farmAddress) external view override returns (uint) {
-        require(poolAddress != address(0), "BaseUbeswapAdapter: invalid pool address");
+        require(poolAddress != address(0), "UbeswapAdapter: invalid pool address");
 
         return IStakingRewards(farmAddress).earned(poolAddress);
     }
@@ -188,7 +188,7 @@ contract BaseUbeswapAdapter is IBaseUbeswapAdapter {
     */
     function getTokenAmountsFromPair(address tokenA, address tokenB, uint numberOfLPTokens) external view override returns (uint, uint) {
         address pair = getPair(tokenA, tokenB);
-        require(pair != address(0), "BaseUbeswapAdapter: invalid address for pair");
+        require(pair != address(0), "UbeswapAdapter: invalid address for pair");
 
         uint pairBalanceTokenA = IERC20(tokenA).balanceOf(pair);
         uint pairBalanceTokenB = IERC20(tokenB).balanceOf(pair);

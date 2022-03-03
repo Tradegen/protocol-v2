@@ -4,19 +4,19 @@ pragma solidity ^0.8.3;
 pragma experimental ABIEncoderV2;
 
 //Interfaces
-import './interfaces/IERC20.sol';
-import './interfaces/IAssetHandler.sol';
-import './interfaces/IAddressResolver.sol';
-import './interfaces/Mobius/ISwap.sol';
-import './interfaces/Mobius/IMasterMind.sol';
-import './interfaces/IBaseUbeswapAdapter.sol';
+import '../interfaces/IERC20.sol';
+import '../interfaces/IAssetHandler.sol';
+import '../interfaces/IAddressResolver.sol';
+import '../interfaces/Mobius/ISwap.sol';
+import '../interfaces/Mobius/IMasterMind.sol';
+import '../interfaces/IUbeswapAdapter.sol';
 
 //Inheritance
-import './interfaces/IMoolaAdapter.sol';
+import '../interfaces/IMoolaAdapter.sol';
 
 //Libraries
-import './openzeppelin-solidity/contracts/SafeMath.sol';
-import './openzeppelin-solidity/contracts/Ownable.sol';
+import '../openzeppelin-solidity/contracts/SafeMath.sol';
+import '../openzeppelin-solidity/contracts/Ownable.sol';
 
 contract MoolaAdapter is IMoolaAdapter, Ownable {
     using SafeMath for uint;
@@ -48,15 +48,15 @@ contract MoolaAdapter is IMoolaAdapter, Ownable {
         require(currencyKey != address(0), "Invalid currency key");
 
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
-        address ubeswapAdapterAddress = ADDRESS_RESOLVER.getContractAddress("BaseUbeswapAdapter");
+        address ubeswapAdapterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapAdapter");
 
         require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKey), "MoolaAdapter: Currency is not available");
 
         if (moolaAssets[currencyKey].lendingPool != address(0)) {
-            price = IBaseUbeswapAdapter(ubeswapAdapterAddress).getPrice(currencyKey);
+            price = IUbeswapAdapter(ubeswapAdapterAddress).getPrice(currencyKey);
         }
         else if (equivalentMoolaAsset[currencyKey] != address(0)) {
-            price = IBaseUbeswapAdapter(ubeswapAdapterAddress).getPrice(equivalentMoolaAsset[currencyKey]);
+            price = IUbeswapAdapter(ubeswapAdapterAddress).getPrice(equivalentMoolaAsset[currencyKey]);
         }
         
         price = 0;

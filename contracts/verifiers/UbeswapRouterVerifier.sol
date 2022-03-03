@@ -12,7 +12,7 @@ import "../interfaces/IVerifier.sol";
 //Interfaces
 import "../interfaces/IAddressResolver.sol";
 import "../interfaces/IAssetHandler.sol";
-import "../interfaces/IBaseUbeswapAdapter.sol";
+import "../interfaces/IUbeswapAdapter.sol";
 
 contract UbeswapRouterVerifier is TxDataUtils, IVerifier {
     using SafeMath for uint;
@@ -28,7 +28,7 @@ contract UbeswapRouterVerifier is TxDataUtils, IVerifier {
         bytes4 method = getMethod(data);
 
         address assetHandlerAddress = IAddressResolver(addressResolver).getContractAddress("AssetHandler");
-        address baseUbeswapAdapterAddress = IAddressResolver(addressResolver).getContractAddress("BaseUbeswapAdapter");
+        address ubeswapAdapterAddress = IAddressResolver(addressResolver).getContractAddress("UbeswapAdapter");
 
         if (method == bytes4(keccak256("swapExactTokensForTokens(uint256,uint256,address[],address,uint256)")))
         {
@@ -58,7 +58,7 @@ contract UbeswapRouterVerifier is TxDataUtils, IVerifier {
             uint amountBDesired = uint(getInput(data, 3));
 
             //Check if assets are supported
-            address pair = IBaseUbeswapAdapter(baseUbeswapAdapterAddress).getPair(tokenA, tokenB);
+            address pair = IUbeswapAdapter(ubeswapAdapterAddress).getPair(tokenA, tokenB);
             require(IAssetHandler(assetHandlerAddress).isValidAsset(tokenA), "UbeswapRouterVerifier: unsupported tokenA");
             require(IAssetHandler(assetHandlerAddress).isValidAsset(tokenB), "UbeswapRouterVerifier: unsupported tokenB");
             require(IAssetHandler(assetHandlerAddress).isValidAsset(pair), "UbeswapRouterVerifier: unsupported LP token");
@@ -80,7 +80,7 @@ contract UbeswapRouterVerifier is TxDataUtils, IVerifier {
             uint numberOfLPTokens = uint(getInput(data, 2));
 
             //Check if assets are supported
-            address pair = IBaseUbeswapAdapter(baseUbeswapAdapterAddress).getPair(tokenA, tokenB);
+            address pair = IUbeswapAdapter(ubeswapAdapterAddress).getPair(tokenA, tokenB);
             require(IAssetHandler(assetHandlerAddress).isValidAsset(tokenA), "UbeswapRouterVerifier: unsupported tokenA");
             require(IAssetHandler(assetHandlerAddress).isValidAsset(tokenB), "UbeswapRouterVerifier: unsupported tokenB");
             require(IAssetHandler(assetHandlerAddress).isValidAsset(pair), "UbeswapRouterVerifier: unsupported LP token");

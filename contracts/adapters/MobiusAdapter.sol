@@ -4,19 +4,19 @@ pragma solidity ^0.8.3;
 pragma experimental ABIEncoderV2;
 
 //Interfaces
-import './interfaces/IERC20.sol';
-import './interfaces/IAssetHandler.sol';
-import './interfaces/IAddressResolver.sol';
-import './interfaces/Mobius/ISwap.sol';
-import './interfaces/Mobius/IMasterMind.sol';
-import './interfaces/IBaseUbeswapAdapter.sol';
+import '../interfaces/IERC20.sol';
+import '../interfaces/IAssetHandler.sol';
+import '../interfaces/IAddressResolver.sol';
+import '../interfaces/Mobius/ISwap.sol';
+import '../interfaces/Mobius/IMasterMind.sol';
+import '../interfaces/IUbeswapAdapter.sol';
 
 //Inheritance
-import './interfaces/IMobiusAdapter.sol';
+import '../interfaces/IMobiusAdapter.sol';
 
 //Libraries
-import './openzeppelin-solidity/contracts/SafeMath.sol';
-import './openzeppelin-solidity/contracts/Ownable.sol';
+import '../openzeppelin-solidity/contracts/SafeMath.sol';
+import '../openzeppelin-solidity/contracts/Ownable.sol';
 
 contract MobiusAdapter is IMobiusAdapter, Ownable {
     using SafeMath for uint;
@@ -60,11 +60,11 @@ contract MobiusAdapter is IMobiusAdapter, Ownable {
         require(currencyKey != address(0), "Invalid currency key");
 
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
-        address ubeswapAdapterAddress = ADDRESS_RESOLVER.getContractAddress("BaseUbeswapAdapter");
+        address ubeswapAdapterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapAdapter");
 
         require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKey), "MobiusAdapter: Currency is not available");
 
-        price = IBaseUbeswapAdapter(ubeswapAdapterAddress).getPrice(equivalentUbeswapAsset[mobiusAssets[currencyKey].denominationAsset]);
+        price = IUbeswapAdapter(ubeswapAdapterAddress).getPrice(equivalentUbeswapAsset[mobiusAssets[currencyKey].denominationAsset]);
 
         if (mobiusAssets[currencyKey].denominationAsset != currencyKey) {
             uint mobiusPrice = ISwap(mobiusAssets[currencyKey].swapAddress).getVirtualPrice();

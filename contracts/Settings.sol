@@ -11,19 +11,6 @@ import './openzeppelin-solidity/contracts/Ownable.sol';
 contract Settings is ISettings, Ownable {
     mapping (string => uint) public parameters;
 
-    /**
-    * @notice Initial parameters and values:
-    *         MaximumNumberOfPoolsPerUser - 2;
-    *         MaximumPerformanceFee - 30% (3000 / 10000);
-    *         MaximumNumberOfPositionsInPool - 6;
-    *         MarketplaceProtocolFee - 1% (100 / 10000)
-    *         MarketplaceAssetManagerFee - 2% (200 / 10000)
-    *         MaximumNumberOfCappedPoolTokens - 1,000,000
-    *         MinimumNumberOfCappedPoolTokens - 10
-    *         MaximumCappedPoolSeedPrice - $1,000 (10 ** 21)
-    *         MinimumCappedPoolSeedPrice - $0.10 (10 ** 17)
-    *         TimeBetweenFeeSnapshots - 14 days
-    */
     constructor() Ownable() {}
 
     /* ========== VIEWS ========== */
@@ -45,7 +32,7 @@ contract Settings is ISettings, Ownable {
     * @param newValue The new value of the given parameter
     */
     function setParameterValue(string memory parameter, uint newValue) external onlyOwner {
-        require(newValue > 0, "Value cannot be negative");
+        require(newValue > 0, "Settings: Value cannot be negative");
 
         uint oldValue = parameters[parameter];
         parameters[parameter] = newValue;
@@ -56,7 +43,7 @@ contract Settings is ISettings, Ownable {
     /* ========== MODIFIERS ========== */
 
     modifier isValidAddress(address addressToCheck) {
-        require(addressToCheck != address(0), "Address is not valid");
+        require(addressToCheck != address(0), "Settings: Address is not valid");
         _;
     }
 

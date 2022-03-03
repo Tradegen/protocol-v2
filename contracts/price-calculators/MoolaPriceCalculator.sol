@@ -3,13 +3,13 @@
 pragma solidity ^0.8.3;
 
 //Inheritance
-import './interfaces/IPriceAggregator.sol';
+import '../interfaces/IPriceCalculator.sol';
 
 //Interfaces
-import './interfaces/IMoolaAdapter.sol';
-import './interfaces/IAddressResolver.sol';
+import '../interfaces/IMoolaAdapter.sol';
+import '../interfaces/IAddressResolver.sol';
 
-contract MoolaPriceAggregator is IPriceAggregator {
+contract MoolaPriceCalculator is IPriceCalculator {
 
     IAddressResolver public ADDRESS_RESOLVER;
 
@@ -20,7 +20,7 @@ contract MoolaPriceAggregator is IPriceAggregator {
     /* ========== VIEWS ========== */
 
     function getUSDPrice(address asset) external view override returns (uint) {
-        require(asset != address(0), "MoolaTokenPriceAggregator: invalid asset address.");
+        require(asset != address(0), "MoolaTokenPriceCalculator: invalid asset address.");
 
         address moolaAdapterAddress = ADDRESS_RESOLVER.getContractAddress("MoolaAdapter");
 

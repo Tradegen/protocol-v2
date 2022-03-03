@@ -82,7 +82,6 @@ contract Marketplace is IMarketplace, ERC1155Holder {
         address settingsAddress = ADDRESS_RESOLVER.getContractAddress("Settings");
         address routerAddress = ADDRESS_RESOLVER.getContractAddress("Router");
         address TGEN = ADDRESS_RESOLVER.getContractAddress("TGEN");
-        address xTGEN = ADDRESS_RESOLVER.getContractAddress("xTGEN");
         uint protocolFee = ISettings(settingsAddress).getParameterValue("MarketplaceProtocolFee");
         uint managerFee = ISettings(settingsAddress).getParameterValue("MarketplaceAssetManagerFee");
         address stableCoinAddress = IAssetHandler(ADDRESS_RESOLVER.getContractAddress("AssetHandler")).getStableCoinAddress();
@@ -97,7 +96,7 @@ contract Marketplace is IMarketplace, ERC1155Holder {
         //Swap protocol fee for TGEN and send to xTGEN contract
         uint256 initialTGEN = IERC20(TGEN).balanceOf(address(this));
         IRouter(routerAddress).swapAssetForTGEN(stableCoinAddress, amountOfUSD.mul(protocolFee).div(10000));
-        IERC20(TGEN).safeTransfer(xTGEN, IERC20(TGEN).balanceOf(address(this)).sub(initialTGEN));
+        IERC20(TGEN).safeTransfer(ADDRESS_RESOLVER.getContractAddress("xTGEN"), IERC20(TGEN).balanceOf(address(this)).sub(initialTGEN));
 
         //Pay manager fee
         IERC20(stableCoinAddress).safeTransfer(ICappedPool(poolAddress).manager(), amountOfUSD.mul(managerFee).div(10000));
