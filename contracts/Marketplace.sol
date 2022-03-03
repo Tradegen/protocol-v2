@@ -17,6 +17,7 @@ import './interfaces/IAddressResolver.sol';
 import './interfaces/ISettings.sol';
 import './interfaces/IAssetHandler.sol';
 import './interfaces/ICappedPool.sol';
+import './interfaces/IRouter.sol';
 
 contract Marketplace is IMarketplace, ERC1155Holder {
     using SafeMath for uint;
@@ -32,8 +33,8 @@ contract Marketplace is IMarketplace, ERC1155Holder {
     //Set to address(0) if invalid pool
     mapping (address => address) public poolManagers; 
 
-    constructor(IAddressResolver addressResolver) {
-        ADDRESS_RESOLVER = addressResolver;
+    constructor(address _addressResolver) {
+        ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
     }
 
     /* ========== VIEWS ========== */
@@ -79,6 +80,9 @@ contract Marketplace is IMarketplace, ERC1155Holder {
         require(msg.sender != marketplaceListings[index].seller, "Cannot buy your own position");
         
         address settingsAddress = ADDRESS_RESOLVER.getContractAddress("Settings");
+        address routerAddress = ADDRESS_RESOLVER.getContractAddress("Router");
+        address TGEN = ADDRESS_RESOLVER.getContractAddress("TGEN");
+        address xTGEN = ADDRESS_RESOLVER.getContractAddress("xTGEN");
         uint protocolFee = ISettings(settingsAddress).getParameterValue("MarketplaceProtocolFee");
         uint managerFee = ISettings(settingsAddress).getParameterValue("MarketplaceAssetManagerFee");
         address stableCoinAddress = IAssetHandler(ADDRESS_RESOLVER.getContractAddress("AssetHandler")).getStableCoinAddress();
@@ -90,7 +94,10 @@ contract Marketplace is IMarketplace, ERC1155Holder {
         //Transfer mcUSD to seller
         IERC20(stableCoinAddress).safeTransfer(marketplaceListings[index].seller, amountOfUSD.mul(10000 - protocolFee - managerFee).div(10000));
 
-        //TODO: implement xTGEN contract and swap protocol fee for TGEN
+        //Swap protocol fee for TGEN and send to xTGEN contract
+        uint256 initialTGEN = IERC20(TGEN).balanceOf(address(this));
+        IRouter(routerAddress).swapAssetForTGEN(stableCoinAddress, amountOfUSD.mul(protocolFee).div(10000));
+        IERC20(TGEN).safeTransfer(xTGEN, IERC20(TGEN).balanceOf(address(this)).sub(initialTGEN));
 
         //Pay manager fee
         IERC20(stableCoinAddress).safeTransfer(ICappedPool(poolAddress).manager(), amountOfUSD.mul(managerFee).div(10000));
