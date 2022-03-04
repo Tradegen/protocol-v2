@@ -246,14 +246,14 @@ contract Pool is IPool, ERC20 {
         
         require(verifier != address(0), "Pool: invalid verifier");
         
-        (bool valid, address receivedAsset) = IVerifier(verifier).verify(address(ADDRESS_RESOLVER), address(this), to, data);
+        (bool valid, address receivedAsset, uint transactionType) = IVerifier(verifier).verify(address(ADDRESS_RESOLVER), address(this), to, data);
         require(valid, "Pool: invalid transaction");
         require(POOL_MANAGER_LOGIC.isAvailableAsset(receivedAsset), "Pool: received asset is not available.");
         
         (bool success, ) = to.call(data);
         require(success, "Pool: transaction failed to execute");
 
-        emit ExecutedTransaction(address(this), manager, to, success);
+        emit ExecutedTransaction(address(this), manager, to, success, transactionType);
     }
 
     /* ========== INTERNAL FUNCTIONS ========== */
@@ -320,6 +320,6 @@ contract Pool is IPool, ERC20 {
 
     event Deposit(address indexed poolAddress, address indexed userAddress, uint amount, uint userUSDValue, address depositAsset, uint tokensDeposited);
     event Withdraw(address indexed poolAddress, address indexed userAddress, uint numberOfPoolTokens, uint valueWithdrawn, address[] assets, uint[] amountsWithdrawn);
-    event ExecutedTransaction(address indexed poolAddress, address indexed manager, address to, bool success);
+    event ExecutedTransaction(address indexed poolAddress, address indexed manager, address to, bool success, uint transactionType);
     event SetPoolManagerLogic(address indexed poolAddress, address poolManagerLogicAddress);
 }

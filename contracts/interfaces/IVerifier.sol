@@ -9,9 +9,9 @@ interface IVerifier {
     * @param pool Address of the pool
     * @param to External contract address
     * @param data Transaction call data
-    * @return (uint, address) Whether the transaction is valid and the received asset
+    * @return (bool, address, uint) Whether the transaction is valid, the received asset, and the transaction type.
     */
-    function verify(address addressResolver, address pool, address to, bytes calldata data) external returns (bool, address);
+    function verify(address addressResolver, address pool, address to, bytes calldata data) external returns (bool, address, uint);
 
     event ExchangeFrom(address fundAddress, address sourceAsset, uint sourceAmount, address destinationAsset);
 }

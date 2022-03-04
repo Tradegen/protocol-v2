@@ -24,9 +24,9 @@ contract UbeswapFarmVerifier is TxDataUtils, IVerifier {
     * @param pool Address of the pool
     * @param to External contract address
     * @param data Transaction call data
-    * @return (uint, address) Whether the transaction is valid and the received asset
+    * @return (bool, address, uint) Whether the transaction is valid, the received asset, and the transaction type.
     */
-    function verify(address addressResolver, address pool, address to, bytes calldata data) external override returns (bool, address) {
+    function verify(address addressResolver, address pool, address to, bytes calldata data) external override returns (bool, address, uint) {
         bytes4 method = getMethod(data);
 
         address assetHandlerAddress = IAddressResolver(addressResolver).getContractAddress("AssetHandler");
@@ -44,9 +44,9 @@ contract UbeswapFarmVerifier is TxDataUtils, IVerifier {
             require(IAssetHandler(assetHandlerAddress).isValidAsset(rewardToken), "UbeswapFarmVerifier: unsupported reward token");
             require(IAssetHandler(assetHandlerAddress).isValidAsset(pair), "UbeswapFarmVerifier: unsupported liquidity pair");
 
-            emit Staked(pool, to, numberOfLPTokens, block.timestamp);
+            emit Staked(pool, to, numberOfLPTokens);
 
-            return (true, rewardToken);
+            return (true, rewardToken, 8);
         }
         else if (method == bytes4(keccak256("withdraw(uint256)")))
         {
@@ -56,18 +56,18 @@ contract UbeswapFarmVerifier is TxDataUtils, IVerifier {
             //Check if assets are supported
             require(IAssetHandler(assetHandlerAddress).isValidAsset(pair), "UbeswapFarmVerifier: unsupported liquidity pair");
 
-            emit Unstaked(pool, to, numberOfLPTokens, block.timestamp);
+            emit Unstaked(pool, to, numberOfLPTokens);
 
-            return (true, pair);
+            return (true, pair, 9);
         }
         else if (method == bytes4(keccak256("getReward()")))
         {
             //Check if assets are supported
             require(IAssetHandler(assetHandlerAddress).isValidAsset(rewardToken), "UbeswapFarmVerifier: unsupported reward token");
 
-            emit ClaimedReward(pool, to, block.timestamp);
+            emit ClaimedReward(pool, to);
 
-            return (true, rewardToken);
+            return (true, rewardToken, 10);
         }
         else if (method == bytes4(keccak256("exit()")))
         {
@@ -77,18 +77,18 @@ contract UbeswapFarmVerifier is TxDataUtils, IVerifier {
             require(IAssetHandler(assetHandlerAddress).isValidAsset(rewardToken), "UbeswapFarmVerifier: unsupported reward token");
             require(IAssetHandler(assetHandlerAddress).isValidAsset(pair), "UbeswapFarmVerifier: unsupported liquidity pair");
 
-            emit Unstaked(pool, to, numberOfLPTokens, block.timestamp);
-            emit ClaimedReward(pool, to, block.timestamp);
+            emit Unstaked(pool, to, numberOfLPTokens);
+            emit ClaimedReward(pool, to);
 
-            return (true, rewardToken);
+            return (true, rewardToken, 11);
         }
 
-        return (false, address(0));
+        return (false, address(0), 0);
     }
 
     /* ========== EVENTS ========== */
 
-    event Staked(address indexed pool, address indexed farm, uint numberOfLPTokens, uint timestamp);
-    event Unstaked(address indexed pool, address indexed farm, uint numberOfLPTokens, uint timestamp);
-    event ClaimedReward(address indexed pool, address indexed farm, uint timestamp);
+    event Staked(address indexed pool, address indexed farm, uint numberOfLPTokens);
+    event Unstaked(address indexed pool, address indexed farm, uint numberOfLPTokens);
+    event ClaimedReward(address indexed pool, address indexed farm);
 }

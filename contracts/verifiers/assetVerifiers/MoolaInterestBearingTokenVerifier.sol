@@ -24,9 +24,9 @@ contract MoolaInterestBearingTokenVerifier is ERC20Verifier {
     * @param pool Address of the pool
     * @param to External contract address
     * @param data Transaction call data
-    * @return (uint, address) Whether the transaction is valid and the received asset
+    * @return (bool, address, uint) Whether the transaction is valid, the received asset, and the transaction type.
     */
-    function verify(address addressResolver, address pool, address to, bytes calldata data) external virtual override returns (bool, address) {
+    function verify(address addressResolver, address pool, address to, bytes calldata data) external virtual override returns (bool, address, uint) {
         bytes4 method = getMethod(data);
 
         if (method == bytes4(keccak256("approve(address,uint256)")))
@@ -42,7 +42,7 @@ contract MoolaInterestBearingTokenVerifier is ERC20Verifier {
 
             emit Approve(pool, spender, amount);
 
-            return (true, address(0));
+            return (true, address(0), 1);
         }
         else if (method == bytes4(keccak256("redeem(uint256)")))
         {
@@ -56,10 +56,10 @@ contract MoolaInterestBearingTokenVerifier is ERC20Verifier {
 
             emit Redeem(pool, to, amount);
 
-            return (true, address(0));
+            return (true, address(0), 2);
         }
 
-        return (false, address(0));
+        return (false, address(0), 0);
     }
 
     /* ========== EVENTS ========== */

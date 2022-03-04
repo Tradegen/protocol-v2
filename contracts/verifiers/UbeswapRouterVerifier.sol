@@ -22,9 +22,9 @@ contract UbeswapRouterVerifier is TxDataUtils, IVerifier {
     * @param addressResolver Address of AddressResolver contract
     * @param pool Address of the pool
     * @param data Transaction call data
-    * @return (uint, address) Whether the transaction is valid and the received asset
+    * @return (bool, address, uint) Whether the transaction is valid, the received asset, and the transaction type.
     */
-    function verify(address addressResolver, address pool, address, bytes calldata data) external override returns (bool, address) {
+    function verify(address addressResolver, address pool, address, bytes calldata data) external override returns (bool, address, uint) {
         bytes4 method = getMethod(data);
 
         address assetHandlerAddress = IAddressResolver(addressResolver).getContractAddress("AssetHandler");
@@ -45,9 +45,9 @@ contract UbeswapRouterVerifier is TxDataUtils, IVerifier {
             //Check if recipient is a pool
             require(pool == toAddress, "UbeswapRouterVerifier: recipient is not pool");
 
-            emit Swap(pool, srcAsset, dstAsset, srcAmount, block.timestamp);
+            emit Swap(pool, srcAsset, dstAsset, srcAmount);
 
-            return (true, dstAsset);
+            return (true, dstAsset, 12);
         }
         else if (method == bytes4(keccak256("addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)")))
         {
@@ -68,9 +68,9 @@ contract UbeswapRouterVerifier is TxDataUtils, IVerifier {
             //Check if recipient is a pool
             require(pool == recipient, "UbeswapRouterVerifier: recipient is not pool");
 
-            emit AddedLiquidity(pool, tokenA, tokenB, pair, amountADesired, amountBDesired, block.timestamp);
+            emit AddedLiquidity(pool, tokenA, tokenB, pair, amountADesired, amountBDesired);
 
-            return (true, pair);
+            return (true, pair, 13);
         }
         else if (method == bytes4(keccak256("removeLiquidity(address,address,uint256,uint256,uint256,address,uint256)")))
         {
@@ -88,17 +88,17 @@ contract UbeswapRouterVerifier is TxDataUtils, IVerifier {
             //Check if recipient is a pool
             require(pool == convert32toAddress(getInput(data, 5)), "UbeswapRouterVerifier: recipient is not pool");
 
-            emit RemovedLiquidity(pool, tokenA, tokenB, pair, numberOfLPTokens, block.timestamp);
+            emit RemovedLiquidity(pool, tokenA, tokenB, pair, numberOfLPTokens);
 
-            return (true, pair);
+            return (true, pair, 14);
         }
 
-        return (false, address(0));
+        return (false, address(0), 0);
     }
 
     /* ========== EVENTS ========== */
 
-    event Swap(address pool, address srcAsset, address dstAsset, uint srcAmount, uint timestamp);
-    event AddedLiquidity(address pool, address tokenA, address tokenB, address pair, uint amountADesired, uint amountBDesired, uint timestamp);
-    event RemovedLiquidity(address pool, address tokenA, address tokenB, address pair, uint numberOfLPTokens, uint timestamp);
+    event Swap(address pool, address srcAsset, address dstAsset, uint srcAmount);
+    event AddedLiquidity(address pool, address tokenA, address tokenB, address pair, uint amountADesired, uint amountBDesired);
+    event RemovedLiquidity(address pool, address tokenA, address tokenB, address pair, uint numberOfLPTokens);
 }
