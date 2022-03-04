@@ -29,7 +29,7 @@ contract PoolFactory {
     * @return address[] The address of each pool the user manages
     */
     function getUserManagedPools(address user) external view returns(address[] memory) {
-        require(user != address(0), "Invalid address");
+        require(user != address(0), "PoolFactory: Invalid address");
 
         address[] memory addresses = new address[](userToManagedPools[user].length);
         uint[] memory indexes = userToManagedPools[user];

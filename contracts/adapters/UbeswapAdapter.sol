@@ -28,8 +28,8 @@ contract UbeswapAdapter is IUbeswapAdapter {
 
     IAddressResolver public immutable ADDRESS_RESOLVER;
 
-    constructor(IAddressResolver addressResolver) {
-        ADDRESS_RESOLVER = addressResolver;
+    constructor(address _addressResolver) {
+        ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
     }
 
     /* ========== VIEWS ========== */

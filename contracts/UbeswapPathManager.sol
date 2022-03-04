@@ -15,8 +15,8 @@ contract UbeswapPathManager is IUbeswapPathManager, Ownable {
 
     mapping (address => mapping(address => address[])) public optimalPaths;
 
-    constructor(IAddressResolver addressResolver) Ownable() {
-        ADDRESS_RESOLVER = addressResolver;
+    constructor(address _addressResolver) Ownable() {
+        ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
     }
 
     /* ========== VIEWS ========== */
