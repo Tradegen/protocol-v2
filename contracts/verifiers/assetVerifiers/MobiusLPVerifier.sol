@@ -20,15 +20,13 @@ import "../../interfaces/Mobius/IMasterMind.sol";
 contract MobiusLPVerifier is ERC20Verifier, Ownable, IMobiusLPVerifier {
     using SafeMath for uint;
 
-    IAddressResolver public ADDRESS_RESOLVER;
     IMasterMind public MASTER_MIND;
 
     mapping (address => uint) public stakingTokens; //LP token address => farm ID
     mapping (uint => address) public mobiusFarms; //farm ID => LP token address (address(0) if farm ID not supported)
     address public rewardToken; //MOBI token
 
-    constructor(address _addressResolver, address _mobiusMasterMind, address _rewardToken) Ownable() {
-        ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
+    constructor(address _addressResolver, address _mobiusMasterMind, address _rewardToken) Ownable() ERC20Verifier(_addressResolver) {
         MASTER_MIND = IMasterMind(_mobiusMasterMind);
         rewardToken = _rewardToken;
     }

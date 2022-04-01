@@ -14,19 +14,24 @@ import "../interfaces/IAssetHandler.sol";
 import "../interfaces/IMobiusLPVerifier.sol";
 
 contract MobiusFarmVerifier is TxDataUtils, IVerifier {
+    IAddressResolver public immutable ADDRESS_RESOLVER;
+
+    constructor(address _addressResolver) {
+        ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
+    }
+
     /**
     * @dev Parses the transaction data to make sure the transaction is valid
-    * @param addressResolver Address of AddressResolver contract
     * @param pool Address of the pool
     * @param to External contract address
     * @param data Transaction call data
     * @return (bool, address, uint) Whether the transaction is valid, the received asset, and the transaction type.
     */
-    function verify(address addressResolver, address pool, address to, bytes calldata data) external override returns (bool, address, uint) {
+    function verify(address pool, address to, bytes calldata data) external override returns (bool, address, uint) {
         bytes4 method = getMethod(data);
 
-        address assetHandlerAddress = IAddressResolver(addressResolver).getContractAddress("AssetHandler");
-        address mobiusLPVerifierAddress = IAddressResolver(addressResolver).assetVerifiers(3);
+        address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
+        address mobiusLPVerifierAddress = ADDRESS_RESOLVER.assetVerifiers(3);
 
         //Get assets 
         (, address rewardToken) = IMobiusLPVerifier(mobiusLPVerifierAddress).getFarmID(to);

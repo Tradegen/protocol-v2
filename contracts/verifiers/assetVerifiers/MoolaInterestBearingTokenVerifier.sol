@@ -16,17 +16,18 @@ import "../../interfaces/IMoolaAdapter.sol";
 contract MoolaInterestBearingTokenVerifier is ERC20Verifier {
     using SafeMath for uint;
 
+    constructor(address _addressResolver) ERC20Verifier(_addressResolver) {}
+
     /* ========== VIEWS ========== */
 
     /**
     * @dev Parses the transaction data to make sure the transaction is valid
-    * @param addressResolver Address of AddressResolver contract
     * @param pool Address of the pool
     * @param to External contract address
     * @param data Transaction call data
     * @return (bool, address, uint) Whether the transaction is valid, the received asset, and the transaction type.
     */
-    function verify(address addressResolver, address pool, address to, bytes calldata data) external virtual override returns (bool, address, uint) {
+    function verify(address pool, address to, bytes calldata data) external virtual override returns (bool, address, uint) {
         bytes4 method = getMethod(data);
 
         if (method == bytes4(keccak256("approve(address,uint256)")))
@@ -35,7 +36,7 @@ contract MoolaInterestBearingTokenVerifier is ERC20Verifier {
             uint amount = uint(getInput(data, 1));
 
             //Only check for contract verifier, since an asset probably won't call transferFrom() on another asset
-            address verifier = IAddressResolver(addressResolver).contractVerifiers(spender);
+            address verifier = ADDRESS_RESOLVER.contractVerifiers(spender);
 
             //Checks if the spender is an approved address
             require(verifier != address(0), "MoolaInterestBearingTokenVerifier: unsupported spender approval"); 
@@ -48,8 +49,8 @@ contract MoolaInterestBearingTokenVerifier is ERC20Verifier {
         {
             uint amount = uint(getInput(data, 0));
 
-            address assetHandlerAddress = IAddressResolver(addressResolver).getContractAddress("AssetHandler");
-            address moolaAdapterAddress = IAddressResolver(addressResolver).getContractAddress("MoolaAdapter");
+            address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
+            address moolaAdapterAddress = ADDRESS_RESOLVER.getContractAddress("MoolaAdapter");
             address underlyingAsset = IMoolaAdapter(moolaAdapterAddress).getUnderlyingAsset(to);
 
             require(IAssetHandler(assetHandlerAddress).isValidAsset(underlyingAsset), "MoolaInterestBearingTokenVerifier: unsupported underlying asset.");

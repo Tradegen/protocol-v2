@@ -227,33 +227,35 @@ contract Pool is IPool, ERC20 {
     * @param data Bytes data for the transaction
     */
     function executeTransaction(address to, bytes memory data) external onlyPoolManager {
-        require(to != address(0), "Pool: invalid 'to' address");
-
-        //First try to get contract verifier
+        //First try to get contract verifier.
         address verifier = ADDRESS_RESOLVER.contractVerifiers(to);
-        //Try to get asset verifier if no contract verifier found
+
+        //Try to get asset verifier if no contract verifier found.
         if (verifier == address(0))
         {
             address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
             verifier = IAssetHandler(assetHandlerAddress).getVerifier(to);
 
-            //'to' address is an asset; need to check if asset is valid
-            if (verifier != address(0))
-            {
-                require(IAssetHandler(assetHandlerAddress).isValidAsset(to), "Pool: invalid asset");
-            }
+            // Check if asset verifier is found.
+            require(verifier != address(0), "Pool: invalid verifier");
+
+            //'to' address is an asset; need to check if asset is valid.
+            require(IAssetHandler(assetHandlerAddress).isValidAsset(to), "Pool: invalid asset");
         }
         
-        require(verifier != address(0), "Pool: invalid verifier");
-        
-        (bool valid, address receivedAsset, uint transactionType) = IVerifier(verifier).verify(address(ADDRESS_RESOLVER), address(this), to, data);
+        // Verify that the external contract and function signature are valid.
+        // Also check that assets involved in the transaction are supported by Tradegen.
+        (bool valid, address receivedAsset, uint transactionType) = IVerifier(verifier).verify(address(this), to, data);
         require(valid, "Pool: invalid transaction");
         require(POOL_MANAGER_LOGIC.isAvailableAsset(receivedAsset), "Pool: received asset is not available.");
         
-        (bool success, ) = to.call(data);
-        require(success, "Pool: transaction failed to execute");
+        // Executes the transaction.
+        {
+        (bool success,) = to.call(data);
+        require(success, "Pool: Transaction failed to execute");
+        }
 
-        emit ExecutedTransaction(address(this), manager, to, success, transactionType);
+        emit ExecutedTransaction(address(this), manager, to, transactionType);
     }
 
     /* ========== INTERNAL FUNCTIONS ========== */
@@ -320,6 +322,6 @@ contract Pool is IPool, ERC20 {
 
     event Deposit(address indexed poolAddress, address indexed userAddress, uint amount, uint userUSDValue, address depositAsset, uint tokensDeposited);
     event Withdraw(address indexed poolAddress, address indexed userAddress, uint numberOfPoolTokens, uint valueWithdrawn, address[] assets, uint[] amountsWithdrawn);
-    event ExecutedTransaction(address indexed poolAddress, address indexed manager, address to, bool success, uint transactionType);
+    event ExecutedTransaction(address indexed poolAddress, address indexed manager, address to, uint transactionType);
     event SetPoolManagerLogic(address indexed poolAddress, address poolManagerLogicAddress);
 }

@@ -18,19 +18,24 @@ import "../interfaces/Ubeswap/IStakingRewards.sol";
 contract UbeswapFarmVerifier is TxDataUtils, IVerifier {
     using SafeMath for uint;
 
+    IAddressResolver public immutable ADDRESS_RESOLVER;
+
+    constructor(address _addressResolver) {
+        ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
+    }
+
     /**
     * @dev Parses the transaction data to make sure the transaction is valid
-    * @param addressResolver Address of AddressResolver contract
     * @param pool Address of the pool
     * @param to External contract address
     * @param data Transaction call data
     * @return (bool, address, uint) Whether the transaction is valid, the received asset, and the transaction type.
     */
-    function verify(address addressResolver, address pool, address to, bytes calldata data) external override returns (bool, address, uint) {
+    function verify(address pool, address to, bytes calldata data) external override returns (bool, address, uint) {
         bytes4 method = getMethod(data);
 
-        address assetHandlerAddress = IAddressResolver(addressResolver).getContractAddress("AssetHandler");
-        address ubeswapLPVerifierAddress = IAddressResolver(addressResolver).assetVerifiers(2);
+        address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
+        address ubeswapLPVerifierAddress = ADDRESS_RESOLVER.assetVerifiers(2);
 
         //Get assets 
         (address pair, address rewardToken) = IUbeswapLPVerifier(ubeswapLPVerifierAddress).getFarmTokens(to);

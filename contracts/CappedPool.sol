@@ -360,41 +360,43 @@ contract CappedPool is ICappedPool, ERC1155 {
     }
 
     /**
-    * @dev Executes a transaction on behalf of the pool; lets pool talk to other protocols
+    * @dev Executes a transaction on behalf of the pool; lets pool interact with other protocols
     * @param to Address of external contract
     * @param data Bytes data for the transaction
     */
     function executeTransaction(address to, bytes memory data) public onlyPoolManager {
-        require(to != address(0), "Invalid 'to' address");
-
         //First try to get contract verifier
         address verifier = ADDRESS_RESOLVER.contractVerifiers(to);
-        //Try to get asset verifier if no contract verifier found
+        //Try to get asset verifier if no contract verifier found.
         if (verifier == address(0))
         {
             address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
             verifier = IAssetHandler(assetHandlerAddress).getVerifier(to);
 
-            //'to' address is an asset; need to check if asset is valid
-            if (verifier != address(0))
-            {
-                require(IAssetHandler(assetHandlerAddress).isValidAsset(to), "CappedPool: invalid asset");
-            }
+            // Check if asset verifier is found.
+            require(verifier != address(0), "CappedPool: Invalid verifier");
+
+            //'to' address is an asset; need to check if asset is valid.
+            require(IAssetHandler(assetHandlerAddress).isValidAsset(to), "CappedPool: invalid asset");
         }
         
-        require(verifier != address(0), "Invalid verifier");
+        // Verify that the external contract and function signature are valid.
+        // Also check that assets involved in the transaction are supported by Tradegen.
+        (bool valid, address receivedAsset, uint transactionType) = IVerifier(verifier).verify(address(this), to, data);
+        require(valid, "CappedPool: Invalid transaction");
+        require(POOL_MANAGER_LOGIC.isAvailableAsset(receivedAsset), "CappedPool: received asset is not available.");
         
-        (bool valid, address receivedAsset, uint transactionType) = IVerifier(verifier).verify(address(ADDRESS_RESOLVER), address(this), to, data);
-        require(valid, "Invalid transaction");
-        require(POOL_MANAGER_LOGIC.isAvailableAsset(receivedAsset), "Pool: received asset is not available.");
-        
-        (bool success, ) = to.call(data);
-        require(success, "Transaction failed to execute");
+        // Executes the transaction.
+        {
+        (bool success,) = to.call(data);
+        require(success, "CappedPool: Transaction failed to execute");
+        }
 
+        // Updates the pool's weight in the farming system.
         uint256 poolValue = getPoolValue();
         POOL_MANAGER.updateWeight(poolValue > totalDeposits ? poolValue.sub(totalDeposits) : 0, _tokenPrice(poolValue));
 
-        emit ExecutedTransaction(address(this), manager, to, success, transactionType);
+        emit ExecutedTransaction(address(this), manager, to, transactionType);
     }
 
     /* ========== INTERNAL FUNCTIONS ========== */
@@ -508,7 +510,7 @@ contract CappedPool is ICappedPool, ERC1155 {
 
     event Deposit(address indexed poolAddress, address indexed userAddress, uint numberOfPoolTokens, uint amountOfUSD, address depositAsset, uint tokensDeposited);
     event Withdraw(address indexed poolAddress, address indexed userAddress, uint numberOfPoolTokens, uint valueWithdrawn, address[] assets, uint[] amountsWithdrawn);
-    event ExecutedTransaction(address indexed poolAddress, address indexed manager, address to, bool success, uint transactionType);
+    event ExecutedTransaction(address indexed poolAddress, address indexed manager, address to, uint transactionType);
     event SetPoolManagerLogic(address indexed poolAddress, address poolManagerLogicAddress);
     event TakeSnapshot(address indexed poolAddress, uint unrealizedProfits);
 }

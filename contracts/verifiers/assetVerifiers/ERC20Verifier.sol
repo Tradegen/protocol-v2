@@ -19,16 +19,21 @@ import "../../interfaces/IERC20.sol";
 contract ERC20Verifier is TxDataUtils, IVerifier, IAssetVerifier {
     using SafeMath for uint;
 
+    IAddressResolver public immutable ADDRESS_RESOLVER;
+
+    constructor(address _addressResolver) {
+        ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
+    }
+
     /* ========== VIEWS ========== */
 
     /**
     * @dev Parses the transaction data to make sure the transaction is valid
-    * @param addressResolver Address of AddressResolver contract
     * @param pool Address of the pool
     * @param data Transaction call data
     * @return (bool, address, uint) Whether the transaction is valid, the received asset, and the transaction type.
     */
-    function verify(address addressResolver, address pool, address, bytes calldata data) external virtual override returns (bool, address, uint) {
+    function verify(address pool, address, bytes calldata data) external virtual override returns (bool, address, uint) {
         bytes4 method = getMethod(data);
 
         if (method == bytes4(keccak256("approve(address,uint256)")))
@@ -37,7 +42,7 @@ contract ERC20Verifier is TxDataUtils, IVerifier, IAssetVerifier {
             uint amount = uint(getInput(data, 1));
 
             //Only check for contract verifier, since an asset probably won't call transferFrom() on another asset
-            address verifier = IAddressResolver(addressResolver).contractVerifiers(spender);
+            address verifier = ADDRESS_RESOLVER.contractVerifiers(spender);
 
             //Checks if the spender is an approved address
             require(verifier != address(0), "ERC20Verifier: unsupported spender approval"); 

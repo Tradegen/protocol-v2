@@ -17,18 +17,23 @@ import "../interfaces/IUbeswapAdapter.sol";
 contract UbeswapRouterVerifier is TxDataUtils, IVerifier {
     using SafeMath for uint;
 
+    IAddressResolver public immutable ADDRESS_RESOLVER;
+
+    constructor(address _addressResolver) {
+        ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
+    }
+
     /**
     * @dev Parses the transaction data to make sure the transaction is valid
-    * @param addressResolver Address of AddressResolver contract
     * @param pool Address of the pool
     * @param data Transaction call data
     * @return (bool, address, uint) Whether the transaction is valid, the received asset, and the transaction type.
     */
-    function verify(address addressResolver, address pool, address, bytes calldata data) external override returns (bool, address, uint) {
+    function verify(address pool, address, bytes calldata data) external override returns (bool, address, uint) {
         bytes4 method = getMethod(data);
 
-        address assetHandlerAddress = IAddressResolver(addressResolver).getContractAddress("AssetHandler");
-        address ubeswapAdapterAddress = IAddressResolver(addressResolver).getContractAddress("UbeswapAdapter");
+        address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
+        address ubeswapAdapterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapAdapter");
 
         if (method == bytes4(keccak256("swapExactTokensForTokens(uint256,uint256,address[],address,uint256)")))
         {

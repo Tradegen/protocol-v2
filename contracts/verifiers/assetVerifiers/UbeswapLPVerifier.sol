@@ -22,15 +22,11 @@ import "../../interfaces/Ubeswap/IStakingRewards.sol";
 contract UbeswapLPVerifier is ERC20Verifier, Ownable, IUbeswapLPVerifier {
     using SafeMath for uint;
 
-    IAddressResolver public ADDRESS_RESOLVER;
-
     mapping (address => address) public ubeswapFarms;
     mapping (address => address) public stakingTokens; //farm => pair
     mapping (address => address) public rewardTokens; //farm => reward token
 
-    constructor(IAddressResolver addressResolver) Ownable() {
-        ADDRESS_RESOLVER = addressResolver;
-    }
+    constructor(address _addressResolver) Ownable() ERC20Verifier(_addressResolver) {}
 
     /* ========== VIEWS ========== */
 
