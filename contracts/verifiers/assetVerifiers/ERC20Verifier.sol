@@ -60,12 +60,15 @@ contract ERC20Verifier is TxDataUtils, IVerifier, IAssetVerifier {
     * @param pool Address of the pool
     * @param asset Address of the asset
     * @param portion Portion of the pool's balance in the asset
-    * @return (address, uint, MultiTransaction[]) Withdrawn asset, amount of asset withdrawn, and transactions used to execute the withdrawal
+    * @return (WithdrawalData) A struct containing the asset withdrawn, amount of asset withdrawn, and the transactions used to execute the withdrawal.
     */
-    function prepareWithdrawal(address pool, address asset, uint portion) external view virtual override returns (address, uint, MultiTransaction[] memory transactions) {
-        uint totalAssetBalance = getBalance(pool, asset);
-        uint withdrawBalance = totalAssetBalance.mul(portion).div(10**18);
-        return (asset, withdrawBalance, transactions);
+    function prepareWithdrawal(address pool, address asset, uint portion) external view virtual override returns (WithdrawalData memory) {
+        return WithdrawalData({
+            withdrawalAsset: asset,
+            withdrawalAmount: getBalance(pool, asset).mul(portion).div(10**18),
+            externalAddresses: new address[](0),
+            transactionDatas: new bytes[](0)
+        });
     }
 
     /**

@@ -38,28 +38,33 @@ contract MobiusLPVerifier is ERC20Verifier, Ownable, IMobiusLPVerifier {
     * @param pool Address of the pool
     * @param asset Address of the asset
     * @param portion Portion of the pool's balance in the asset
-    * @return (address, uint, MultiTransaction[]) Withdrawn asset, amount of asset withdrawn, and transactions used to execute the withdrawal
+    * @return (WithdrawalData) A struct containing the asset withdrawn, amount of asset withdrawn, and the transactions used to execute the withdrawal.
     */
-    function prepareWithdrawal(address pool, address asset, uint portion) external view override returns (address, uint, MultiTransaction[] memory transactions) {
+    function prepareWithdrawal(address pool, address asset, uint portion) external view override returns (WithdrawalData memory) {
         require(pool != address(0), "MobiusLPVerifier: invalid pool address");
         require(asset != address(0), "MobiusLPVerifier: invalid asset address");
         require(portion > 0, "MobiusLPVerifier: portion must be greater than 0");
         require(mobiusFarms[stakingTokens[asset]] == asset, "MobiusLPVerifier: asset not supported.");
 
-        uint poolBalance = IERC20(asset).balanceOf(pool);
-        uint withdrawBalance = poolBalance.mul(portion).div(10**18);
         uint stakedBalance = MASTER_MIND.userInfo(stakingTokens[asset], pool).amount;
+
+        address[] memory addresses = new address[](stakedBalance > 0 ? 1 : 0);
+        bytes[] memory data = new bytes[](stakedBalance > 0 ? 1 : 0);
 
         //Prepare transaction data
         if (stakedBalance > 0)
         {
             uint stakedWithdrawBalance = stakedBalance.mul(portion).div(10**18);
-            transactions = new MultiTransaction[](1);
-            transactions[0].to = address(MASTER_MIND);
-            transactions[0].txData = abi.encodeWithSelector(bytes4(keccak256("withdraw(uint256,uint256)")), stakedWithdrawBalance);
+            addresses[0] = address(MASTER_MIND);
+            data[0] = abi.encodeWithSelector(bytes4(keccak256("withdraw(uint256,uint256)")), stakingTokens[asset], stakedWithdrawBalance);
         }
 
-        return (asset, withdrawBalance, transactions);
+        return WithdrawalData({
+            withdrawalAsset: asset,
+            withdrawalAmount: IERC20(asset).balanceOf(pool).mul(portion).div(10 ** 18),
+            externalAddresses: addresses,
+            transactionDatas: data
+        });
     }
 
     /**

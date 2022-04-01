@@ -283,27 +283,27 @@ contract Pool is IPool, ERC20 {
     function _withdrawProcessing(address asset, uint portion) internal returns (uint) {
         address verifier = IAssetHandler(ADDRESS_RESOLVER.getContractAddress("AssetHandler")).getVerifier(asset);
 
-        (address withdrawAsset, uint withdrawBalance, IAssetVerifier.MultiTransaction[] memory transactions) = IAssetVerifier(verifier).prepareWithdrawal(address(this), asset, portion);
+        IAssetVerifier.WithdrawalData memory withdrawalData = IAssetVerifier(verifier).prepareWithdrawal(address(this), asset, portion);
 
-        if (transactions.length > 0)
+        if (withdrawalData.externalAddresses.length > 0)
         {
-            uint initialAssetBalance = (withdrawAsset != address(0)) ? IERC20(withdrawAsset).balanceOf(address(this)) : 0;
+            uint initialAssetBalance = (withdrawalData.withdrawalAsset != address(0)) ? IERC20(withdrawalData.withdrawalAsset).balanceOf(address(this)) : 0;
 
             //Execute each transaction
-            for (uint i = 0; i < transactions.length; i++)
+            for (uint i = 0; i < withdrawalData.externalAddresses.length; i++)
             {
-                (bool success,) = (transactions[i].to).call(transactions[i].txData);
-                require(success, "Pool: failed to withdraw tokens");
+                (bool success,) = (withdrawalData.externalAddresses[i]).call(withdrawalData.transactionDatas[i]);
+                require(success, "Pool: Failed to withdraw.");
             }
 
             //Account for additional tokens added (withdrawing staked LP tokens)
-            if (withdrawAsset != address(0))
+            if (withdrawalData.withdrawalAsset != address(0))
             {
-                withdrawBalance = withdrawBalance.add(IERC20(withdrawAsset).balanceOf(address(this))).sub(initialAssetBalance);
+                withdrawalData.withdrawalAmount = withdrawalData.withdrawalAmount.add(IERC20(withdrawalData.withdrawalAsset).balanceOf(address(this))).sub(initialAssetBalance);
             }
         }
 
-        return withdrawBalance;
+        return withdrawalData.withdrawalAmount;
     }
 
     /* ========== MODIFIERS ========== */

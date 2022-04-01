@@ -35,27 +35,32 @@ contract UbeswapLPVerifier is ERC20Verifier, Ownable, IUbeswapLPVerifier {
     * @param pool Address of the pool
     * @param asset Address of the asset
     * @param portion Portion of the pool's balance in the asset
-    * @return (address, uint, MultiTransaction[]) Withdrawn asset, amount of asset withdrawn, and transactions used to execute the withdrawal
+    * @return (WithdrawalData) A struct containing the asset withdrawn, amount of asset withdrawn, and the transactions used to execute the withdrawal.
     */
-    function prepareWithdrawal(address pool, address asset, uint portion) external view override returns (address, uint, MultiTransaction[] memory transactions) {
+    function prepareWithdrawal(address pool, address asset, uint portion) external view override returns (WithdrawalData memory) {
         require(pool != address(0), "UbeswapLPVerifier: invalid pool address");
         require(asset != address(0), "UbeswapLPVerifier: invalid asset address");
         require(portion > 0, "UbeswapLPVerifier: portion must be greater than 0");
 
-        uint poolBalance = IERC20(asset).balanceOf(pool);
-        uint withdrawBalance = poolBalance.mul(portion).div(10**18);
         uint stakedBalance = IStakingRewards(ubeswapFarms[asset]).balanceOf(pool);
+
+        address[] memory addresses = new address[](stakedBalance > 0 ? 1 : 0);
+        bytes[] memory data = new bytes[](stakedBalance > 0 ? 1 : 0);
 
         //Prepare transaction data
         if (stakedBalance > 0)
         {
             uint stakedWithdrawBalance = stakedBalance.mul(portion).div(10**18);
-            transactions = new MultiTransaction[](1);
-            transactions[0].to = ubeswapFarms[asset];
-            transactions[0].txData = abi.encodeWithSelector(bytes4(keccak256("withdraw(uint256)")), stakedWithdrawBalance);
+            addresses[0] = ubeswapFarms[asset];
+            data[0] = abi.encodeWithSelector(bytes4(keccak256("withdraw(uint256)")), stakedWithdrawBalance);
         }
 
-        return (asset, withdrawBalance, transactions);
+        return WithdrawalData({
+            withdrawalAsset: asset,
+            withdrawalAmount: IERC20(asset).balanceOf(pool).mul(portion).div(10**18),
+            externalAddresses: addresses,
+            transactionDatas: data
+        });
     }
 
     /**
