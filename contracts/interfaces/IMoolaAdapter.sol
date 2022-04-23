@@ -4,44 +4,44 @@ pragma solidity >=0.7.6;
 
 interface IMoolaAdapter {
     /**
-    * @dev Given an input asset address, returns the price of the asset in USD
-    * @notice Returns 0 if the asset is not supported
-    * @param currencyKey Address of the asset
-    * @return price Price of the asset
+    * @notice Given an input asset address, returns the price of the asset in USD.
+    * @dev Returns 0 if the asset is not supported.
+    * @param _currencyKey Address of the asset.
+    * @return price Price of the asset.
     */
-    function getPrice(address currencyKey) external view returns (uint price);
+    function getPrice(address _currencyKey) external view returns (uint price);
 
     /**
-    * @dev Returns the address of each lending pool available on Moola
-    * @return address[] The address of each lending pool on Moola
+    * @notice Returns the address of each lending pool available on Moola.
+    * @return address[] The address of each lending pool on Moola.
     */
     function getAvailableMoolaLendingPools() external view returns (address[] memory);
 
     /**
-    * @dev Checks whether the given token has a lending pool on Moola
-    * @param token Address of the token
-    * @return bool Whether the token has a lending pool
+    * @notice Checks whether the given token has a lending pool on Moola.
+    * @param _token Address of the token.
+    * @return bool Whether the token has a lending pool.
     */
-    function checkIfTokenHasLendingPool(address token) external view returns (bool);
+    function checkIfTokenHasLendingPool(address _token) external view returns (bool);
 
     /**
-    * @dev Returns the address of the token's lending pool contract, if it exists
-    * @param token Address of the token
-    * @return address Address of the token's lending pool contract
+    * @notice Returns the address of the token's lending pool contract, if it exists.
+    * @param _token Address of the token.
+    * @return address Address of the token's lending pool contract.
     */
-    function getLendingPoolAddress(address token) external view returns (address);
+    function getLendingPoolAddress(address _token) external view returns (address);
 
     /**
-    * @dev Given the address of a lending pool, returns the lending pool's interest-bearing token and underlying token
-    * @param lendingPoolAddress Address of the lending pool.
-    * @return (address, address) Address of the lending pool's interest-bearing token and address of the underlying token
+    * @notice Given the address of a lending pool, returns the lending pool's interest-bearing token and underlying token.
+    * @param _lendingPoolAddress Address of the lending pool.
+    * @return (address, address) Address of the lending pool's interest-bearing token and address of the underlying token.
     */
-    function getAssetsForLendingPool(address lendingPoolAddress) external view returns (address, address);
+    function getAssetsForLendingPool(address _lendingPoolAddress) external view returns (address, address);
 
     /**
-    * @dev Given the address of an interest-bearing token, returns the token's underlying asset
-    * @param interestBearingToken Address of the interest-bearing token
-    * @return address Address of the token's underlying asset
+    * @notice Given the address of an interest-bearing token, returns the token's underlying asset.
+    * @param _interestBearingToken Address of the interest-bearing token.
+    * @return address Address of the token's underlying asset.
     */
-    function getUnderlyingAsset(address interestBearingToken) external view returns (address);
+    function getUnderlyingAsset(address _interestBearingToken) external view returns (address);
 }

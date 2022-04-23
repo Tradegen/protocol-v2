@@ -1,6 +1,6 @@
 # Tradegen Protocol
 
-Tradegen is an asset management and synthetic trading bot protocol built on Celo. These smart contracts control V2 of our asset management protocol. 
+Tradegen is an asset management and algo trading platform built on Celo. These smart contracts control V2 of our asset management protocol. 
 
 ## Disclaimer
 

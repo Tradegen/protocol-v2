@@ -3,7 +3,7 @@
 pragma solidity ^0.8.3;
 pragma experimental ABIEncoderV2;
 
-//Interfaces
+// Interfaces.
 import '../interfaces/Ubeswap/IUniswapV2Router02.sol';
 import '../interfaces/IERC20.sol';
 import '../interfaces/IAssetHandler.sol';
@@ -14,17 +14,18 @@ import '../interfaces/Ubeswap/IStakingRewards.sol';
 import '../interfaces/Ubeswap/IUniswapV2Factory.sol';
 import '../interfaces/Ubeswap/IStakingRewards.sol';
 
-//Inheritance
+// Inheritance.
 import '../interfaces/IUbeswapAdapter.sol';
 
-//Libraries
+// OpenZeppelin.
 import '../openzeppelin-solidity/contracts/SafeMath.sol';
 
 contract UbeswapAdapter is IUbeswapAdapter {
     using SafeMath for uint;
 
-    // Max slippage percent allowed
-    uint public constant override MAX_SLIPPAGE_PERCENT = 10; //10% slippage
+    // Max slippage percent allowed.
+    // 10% slippage.
+    uint public constant override MAX_SLIPPAGE_PERCENT = 10;
 
     IAddressResolver public immutable ADDRESS_RESOLVER;
 
@@ -35,85 +36,80 @@ contract UbeswapAdapter is IUbeswapAdapter {
     /* ========== VIEWS ========== */
 
     /**
-    * @dev Given an input asset address, returns the price of the asset in USD
-    * @param currencyKey Address of the asset
-    * @return uint Price of the asset
+    * @notice Given an input asset address, returns the price of the asset in USD.
+    * @param _currencyKey Address of the asset.
+    * @return uint Price of the asset.
     */
-    function getPrice(address currencyKey) external view override returns(uint) {
+    function getPrice(address _currencyKey) external view override returns(uint) {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
         address ubeswapRouterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapRouter");
         address stableCoinAddress = IAssetHandler(assetHandlerAddress).getStableCoinAddress();
 
-        //Check if currency key is stablecoin
-        if (currencyKey == stableCoinAddress)
+        // Check if currency key is a stablecoin.
+        // If so, return $1 as the price.
+        if (_currencyKey == stableCoinAddress)
         {
             return 10 ** _getDecimals(currencyKey);
         }
 
-        require(currencyKey != address(0), "UbeswapAdapter: Invalid currency key");
-        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKey), "UbeswapAdapter: Currency is not available");
+        require(IAssetHandler(assetHandlerAddress).isValidAsset(_currencyKey), "UbeswapAdapter: Currency is not available.");
 
         address ubeswapPathManagerAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapPathManager");
         address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(currencyKey, stableCoinAddress);
-        uint[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsOut(10 ** _getDecimals(currencyKey), path); // 1 token -> USD
+        // 1 token -> USD.
+        uint[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsOut(10 ** _getDecimals(currencyKey), path);
 
         return amounts[amounts.length - 1];
     }
 
     /**
-    * @dev Given an input asset amount, returns the maximum output amount of the other asset
-    * @notice Assumes numberOfTokens is multiplied by currency's decimals before function call
-    * @param numberOfTokens Number of tokens
-    * @param currencyKeyIn Address of the asset to be swap from
-    * @param currencyKeyOut Address of the asset to be swap to
-    * @return uint Amount out of the asset
+    * @notice Given an input asset amount, returns the maximum output amount of the other asset.
+    * @dev Assumes numberOfTokens is multiplied by currency's decimals before function call.
+    * @param _numberOfTokens Number of tokens.
+    * @param _currencyKeyIn Address of the asset to be swap from.
+    * @param _currencyKeyOut Address of the asset to be swap to.
+    * @return uint Amount out of the asset.
     */
-    function getAmountsOut(uint numberOfTokens, address currencyKeyIn, address currencyKeyOut) external view override returns (uint) {
+    function getAmountsOut(uint _numberOfTokens, address _currencyKeyIn, address _currencyKeyOut) external view override returns (uint) {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
         address ubeswapRouterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapRouter");
-        address stableCoinAddress = IAssetHandler(assetHandlerAddress).getStableCoinAddress();
 
-        require(currencyKeyIn != address(0), "UbeswapAdapter: Invalid currency key in");
-        require(currencyKeyOut != address(0), "UbeswapAdapter: Invalid currency key out");
-        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKeyIn) || currencyKeyIn == stableCoinAddress, "UbeswapAdapter: CurrencyKeyIn is not available");
-        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKeyOut) || currencyKeyOut == stableCoinAddress, "UbeswapAdapter: CurrencyKeyOut is not available");
-        require(numberOfTokens > 0, "UbeswapAdapter: Number of tokens must be greater than 0");
+        require(IAssetHandler(assetHandlerAddress).isValidAsset(_currencyKeyIn), "UbeswapAdapter: CurrencyKeyIn is not available.");
+        require(IAssetHandler(assetHandlerAddress).isValidAsset(_currencyKeyOut), "UbeswapAdapter: CurrencyKeyOut is not available.");
+        require(_numberOfTokens > 0, "UbeswapAdapter: Number of tokens must be greater than 0.");
 
         address ubeswapPathManagerAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapPathManager");
-        address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(currencyKeyIn, currencyKeyOut);
-        uint[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsOut(numberOfTokens, path);
+        address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(_currencyKeyIn, _currencyKeyOut);
+        uint[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsOut(_numberOfTokens, path);
 
         return amounts[1];
     }
 
     /**
-    * @dev Given the target output asset amount, returns the amount of input asset needed
-    * @param numberOfTokens Target amount of output asset
-    * @param currencyKeyIn Address of the asset to be swap from
-    * @param currencyKeyOut Address of the asset to be swap to
-    * @return uint Amount out input asset needed
+    * @notice Given the target output asset amount, returns the amount of input asset needed.
+    * @param _numberOfTokens Target amount of output asset.
+    * @param _currencyKeyIn Address of the asset to be swap from.
+    * @param _currencyKeyOut Address of the asset to be swap to.
+    * @return uint Amount out input asset needed.
     */
-    function getAmountsIn(uint numberOfTokens, address currencyKeyIn, address currencyKeyOut) external view override returns (uint) {
+    function getAmountsIn(uint _numberOfTokens, address _currencyKeyIn, address _currencyKeyOut) external view override returns (uint) {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
         address ubeswapRouterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapRouter");
-        address stableCoinAddress = IAssetHandler(assetHandlerAddress).getStableCoinAddress();
 
-        require(currencyKeyIn != address(0), "UbeswapAdapter: Invalid currency key in");
-        require(currencyKeyOut != address(0), "UbeswapAdapter: Invalid currency key out");
-        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKeyIn) || currencyKeyIn == stableCoinAddress, "UbeswapAdapter: CurrencyKeyIn is not available");
-        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKeyOut) || currencyKeyOut == stableCoinAddress, "UbeswapAdapter: CurrencyKeyOut is not available");
-        require(numberOfTokens > 0, "UbeswapAdapter: Number of tokens must be greater than 0");
+        require(IAssetHandler(assetHandlerAddress).isValidAsset(_currencyKeyIn), "UbeswapAdapter: CurrencyKeyIn is not available.");
+        require(IAssetHandler(assetHandlerAddress).isValidAsset(_currencyKeyOut), "UbeswapAdapter: CurrencyKeyOut is not available.");
+        require(_numberOfTokens > 0, "UbeswapAdapter: Number of tokens must be greater than 0.");
 
         address ubeswapPathManagerAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapPathManager");
-        address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(currencyKeyIn, currencyKeyOut);
-        uint[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsIn(numberOfTokens, path);
+        address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(_currencyKeyIn, _currencyKeyOut);
+        uint[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsIn(_numberOfTokens, path);
 
         return amounts[1];
     }
 
     /**
-    * @dev Returns the address of each available farm on Ubeswap
-    * @return address[] memory The farm address for each available farm
+    * @notice Returns the address of each available farm on Ubeswap.
+    * @return address[] memory The farm address for each available farm.
     */
     function getAvailableUbeswapFarms() external view override returns (address[] memory) {
         address ubeswapPoolManagerAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapPoolManager");
@@ -139,63 +135,49 @@ contract UbeswapAdapter is IUbeswapAdapter {
     }
 
     /**
-    * @dev Checks whether the given liquidity pair has a farm on Ubeswap
-    * @param pair Address of the liquidity pair
-    * @return bool Whether the pair has a farm
+    * @notice Returns the address of a token pair.
+    * @param _tokenA First token in pair.
+    * @param _tokenB Second token in pair.
+    * @return address The pair's address.
     */
-    function checkIfLPTokenHasFarm(address pair) external view override returns (bool) {
-        require(pair != address(0), "UbeswapAdapter: invalid pair address");
-
-        address ubeswapPoolManagerAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapPoolManager");
-        IUbeswapPoolManager.PoolInfo memory ubeswapFarm = IUbeswapPoolManager(ubeswapPoolManagerAddress).pools(pair);
-
-        return (ubeswapFarm.poolAddress != address(0));
-    }
-
-    /**
-    * @dev Returns the address of a token pair
-    * @param tokenA First token in pair
-    * @param tokenB Second token in pair
-    * @return address The pair's address
-    */
-    function getPair(address tokenA, address tokenB) public view override returns (address) {
-        require(tokenA != address(0), "UbeswapAdapter: invalid address for tokenA");
-        require(tokenB != address(0), "UbeswapAdapter: invalid address for tokenB");
+    function getPair(address _tokenA, address _tokenB) public view override returns (address) {
+        require(_tokenA != address(0), "UbeswapAdapter: invalid address for tokenA.");
+        require(_tokenB != address(0), "UbeswapAdapter: invalid address for tokenB.");
 
         address uniswapV2FactoryAddress = ADDRESS_RESOLVER.getContractAddress("UniswapV2Factory");
 
-        return IUniswapV2Factory(uniswapV2FactoryAddress).getPair(tokenA, tokenB);
+        return IUniswapV2Factory(uniswapV2FactoryAddress).getPair(_tokenA, _tokenB);
     }
 
     /**
-    * @dev Returns the amount of UBE rewards available for the pool in the given farm
-    * @param poolAddress Address of the pool
-    * @param farmAddress Address of the farm on Ubeswap
-    * @return uint Amount of UBE available
+    * @notice Returns the amount of UBE rewards available for the pool in the given farm.
+    * @param _poolAddress Address of the pool.
+    * @param _farmAddress Address of the farm on Ubeswap.
+    * @return uint Amount of UBE available.
     */
-    function getAvailableRewards(address poolAddress, address farmAddress) external view override returns (uint) {
-        require(poolAddress != address(0), "UbeswapAdapter: invalid pool address");
+    function getAvailableRewards(address _poolAddress, address _farmAddress) external view override returns (uint) {
+        require(_poolAddress != address(0), "UbeswapAdapter: invalid pool address.");
 
-        return IStakingRewards(farmAddress).earned(poolAddress);
+        return IStakingRewards(_farmAddress).earned(_poolAddress);
     }
 
     /**
-    * @dev Calculates the amount of tokens in a pair
-    * @param tokenA First token in pair
-    * @param tokenB Second token in pair
-    * @param numberOfLPTokens Number of LP tokens for the given pair
-    * @return (uint, uint) The number of tokens for tokenA and tokenB
+    * @notice Calculates the amount of tokens in a pair.
+    * @param _tokenA First token in pair.
+    * @param _tokenB Second token in pair.
+    * @param _numberOfLPTokens Number of LP tokens for the given pair.
+    * @return (uint, uint) The number of tokens for _tokenA and _tokenB.
     */
-    function getTokenAmountsFromPair(address tokenA, address tokenB, uint numberOfLPTokens) external view override returns (uint, uint) {
-        address pair = getPair(tokenA, tokenB);
-        require(pair != address(0), "UbeswapAdapter: invalid address for pair");
+    function getTokenAmountsFromPair(address _tokenA, address _tokenB, uint _numberOfLPTokens) external view override returns (uint, uint) {
+        address pair = getPair(_tokenA, _tokenB);
+        require(pair != address(0), "UbeswapAdapter: invalid address for pair.");
 
-        uint pairBalanceTokenA = IERC20(tokenA).balanceOf(pair);
-        uint pairBalanceTokenB = IERC20(tokenB).balanceOf(pair);
+        uint pairBalanceTokenA = IERC20(_tokenA).balanceOf(pair);
+        uint pairBalanceTokenB = IERC20(_tokenB).balanceOf(pair);
         uint totalSupply = IERC20(pair).totalSupply();
 
-        uint amountA = pairBalanceTokenA.mul(numberOfLPTokens).div(totalSupply);
-        uint amountB = pairBalanceTokenB.mul(numberOfLPTokens).div(totalSupply);
+        uint amountA = pairBalanceTokenA.mul(_numberOfLPTokens).div(totalSupply);
+        uint amountB = pairBalanceTokenB.mul(_numberOfLPTokens).div(totalSupply);
 
         return (amountA, amountB);
     }
@@ -203,10 +185,12 @@ contract UbeswapAdapter is IUbeswapAdapter {
     /* ========== INTERNAL FUNCTIONS ========== */
 
     /**
-    * @dev Get the decimals of an asset
-    * @return number of decimals of the asset
+    * @notice Get the decimals of an asset.
+    * @dev Assumes that the given asset follows ERC20 standard.
+    * @param _asset Address of the asset.
+    * @return number of decimals of the asset.
     */
-    function _getDecimals(address asset) internal view returns (uint) {
-        return IERC20(asset).decimals();
+    function _getDecimals(address _asset) internal view returns (uint) {
+        return IERC20(_asset).decimals();
     }
 }

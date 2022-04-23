@@ -8,65 +8,59 @@ interface IUbeswapAdapter {
     function MAX_SLIPPAGE_PERCENT() external returns (uint);
 
     /**
-    * @dev Given an input asset address, returns the price of the asset in cUSD
-    * @param currencyKey Address of the asset
-    * @return uint Price of the asset
+    * @notice Given an input asset address, returns the price of the asset in USD.
+    * @param _currencyKey Address of the asset.
+    * @return uint Price of the asset.
     */
-    function getPrice(address currencyKey) external view returns (uint);
+    function getPrice(address _currencyKey) external view returns (uint);
 
     /**
-    * @dev Given an input asset amount, returns the maximum output amount of the other asset
-    * @param numberOfTokens Number of tokens
-    * @param currencyKeyIn Address of the asset to be swap from
-    * @param currencyKeyOut Address of the asset to be swap to
-    * @return uint Amount out of the asset
+    * @notice Given an input asset amount, returns the maximum output amount of the other asset.
+    * @dev Assumes numberOfTokens is multiplied by currency's decimals before function call.
+    * @param _numberOfTokens Number of tokens.
+    * @param _currencyKeyIn Address of the asset to be swap from.
+    * @param _currencyKeyOut Address of the asset to be swap to.
+    * @return uint Amount out of the asset.
     */
-    function getAmountsOut(uint numberOfTokens, address currencyKeyIn, address currencyKeyOut) external view returns (uint);
+    function getAmountsOut(uint _numberOfTokens, address _currencyKeyIn, address _currencyKeyOut) external view returns (uint);
 
     /**
-    * @dev Given the target output asset amount, returns the amount of input asset needed
-    * @param numberOfTokens Target amount of output asset
-    * @param currencyKeyIn Address of the asset to be swap from
-    * @param currencyKeyOut Address of the asset to be swap to
-    * @return uint Amount out input asset needed
+    * @notice Given the target output asset amount, returns the amount of input asset needed.
+    * @param _numberOfTokens Target amount of output asset.
+    * @param _currencyKeyIn Address of the asset to be swap from.
+    * @param _currencyKeyOut Address of the asset to be swap to.
+    * @return uint Amount out input asset needed.
     */
-    function getAmountsIn(uint numberOfTokens, address currencyKeyIn, address currencyKeyOut) external view returns (uint);
+    function getAmountsIn(uint _numberOfTokens, address _currencyKeyIn, address _currencyKeyOut) external view returns (uint);
 
     /**
-    * @dev Returns the farm address and liquidity pool address for each available farm on Ubeswap
-    * @return address[] memory The farm address for each available farm
+    * @notice Returns the address of each available farm on Ubeswap.
+    * @return address[] memory The farm address for each available farm.
     */
     function getAvailableUbeswapFarms() external view returns (address[] memory);
 
     /**
-    * @dev Checks whether the given liquidity pair has a farm on Ubeswap
-    * @param pair Address of the liquidity pair
-    * @return bool Whether the pair has a farm
+    * @notice Returns the address of a token pair.
+    * @param _tokenA First token in pair.
+    * @param _tokenB Second token in pair.
+    * @return address The pair's address.
     */
-    function checkIfLPTokenHasFarm(address pair) external view returns (bool);
+    function getPair(address _tokenA, address _tokenB) external view returns (address);
 
     /**
-    * @dev Returns the address of a token pair
-    * @param tokenA First token in pair
-    * @param tokenB Second token in pair
-    * @return address The pair's address
+    * @notice Returns the amount of UBE rewards available for the pool in the given farm.
+    * @param _poolAddress Address of the pool.
+    * @param _farmAddress Address of the farm on Ubeswap.
+    * @return uint Amount of UBE available.
     */
-    function getPair(address tokenA, address tokenB) external view returns (address);
+    function getAvailableRewards(address _poolAddress, address _farmAddress) external view returns (uint);
 
     /**
-    * @dev Returns the amount of UBE rewards available for the pool in the given farm
-    * @param poolAddress Address of the pool
-    * @param farmAddress Address of the farm on Ubeswap
-    * @return uint Amount of UBE available
+    * @notice Calculates the amount of tokens in a pair.
+    * @param _tokenA First token in pair.
+    * @param _tokenB Second token in pair.
+    * @param _numberOfLPTokens Number of LP tokens for the given pair.
+    * @return (uint, uint) The number of tokens for _tokenA and _tokenB.
     */
-    function getAvailableRewards(address poolAddress, address farmAddress) external view returns (uint);
-
-    /**
-    * @dev Calculates the amount of tokens in a pair
-    * @param tokenA First token in pair
-    * @param tokenB Second token in pair
-    * @param numberOfLPTokens Number of LP tokens for the given pair
-    * @return (uint, uint) The number of tokens for tokenA and tokenB
-    */
-    function getTokenAmountsFromPair(address tokenA, address tokenB, uint numberOfLPTokens) external view returns (uint, uint);
+    function getTokenAmountsFromPair(address _tokenA, address _tokenB, uint _numberOfLPTokens) external view returns (uint, uint);
 }

@@ -3,7 +3,7 @@
 pragma solidity ^0.8.3;
 pragma experimental ABIEncoderV2;
 
-//Interfaces
+// Interfaces.
 import '../interfaces/IERC20.sol';
 import '../interfaces/IAssetHandler.sol';
 import '../interfaces/IAddressResolver.sol';
@@ -11,10 +11,10 @@ import '../interfaces/Mobius/ISwap.sol';
 import '../interfaces/Mobius/IMasterMind.sol';
 import '../interfaces/IUbeswapAdapter.sol';
 
-//Inheritance
+// Inheritance.
 import '../interfaces/IMoolaAdapter.sol';
 
-//Libraries
+// OpenZeppelin.
 import '../openzeppelin-solidity/contracts/SafeMath.sol';
 import '../openzeppelin-solidity/contracts/Ownable.sol';
 
@@ -28,9 +28,14 @@ contract MoolaAdapter is IMoolaAdapter, Ownable {
 
     IAddressResolver public immutable ADDRESS_RESOLVER;
 
-    mapping (address => MoolaAsset) public moolaAssets; // interest-bearing token address => token info
-    mapping (address => address) public equivalentMoolaAsset; //underlying asset => asset's interest-bearing token on Moola
-    mapping (address => address) public lendingPools; // lending pool address => interest-bearing token address
+    // (interest-bearing token address => token info).
+    mapping (address => MoolaAsset) public moolaAssets;
+
+    // (underlying asset => asset's interest-bearing token on Moola).
+    mapping (address => address) public equivalentMoolaAsset; 
+
+    // (lending pool address => interest-bearing token address).
+    mapping (address => address) public lendingPools; 
 
     constructor(address _addressResolver) Ownable() {
         ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
@@ -39,32 +44,32 @@ contract MoolaAdapter is IMoolaAdapter, Ownable {
     /* ========== VIEWS ========== */
 
     /**
-    * @dev Given an input asset address, returns the price of the asset in USD
-    * @notice Returns 0 if the asset is not supported
-    * @param currencyKey Address of the asset
-    * @return price Price of the asset
+    * @notice Given an input asset address, returns the price of the asset in USD.
+    * @dev Returns 0 if the asset is not supported.
+    * @param _currencyKey Address of the asset.
+    * @return price Price of the asset.
     */
-    function getPrice(address currencyKey) external view override returns (uint price) {
-        require(currencyKey != address(0), "Invalid currency key");
+    function getPrice(address _currencyKey) external view override returns (uint price) {
+        require(_currencyKey != address(0), "MoolaAdapter: Invalid currency key.");
 
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
         address ubeswapAdapterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapAdapter");
 
-        require(IAssetHandler(assetHandlerAddress).isValidAsset(currencyKey), "MoolaAdapter: Currency is not available");
+        require(IAssetHandler(assetHandlerAddress).isValidAsset(_currencyKey), "MoolaAdapter: Currency is not available.");
 
-        if (moolaAssets[currencyKey].lendingPool != address(0)) {
-            price = IUbeswapAdapter(ubeswapAdapterAddress).getPrice(currencyKey);
+        if (moolaAssets[_currencyKey].lendingPool != address(0)) {
+            price = IUbeswapAdapter(ubeswapAdapterAddress).getPrice(_currencyKey);
         }
-        else if (equivalentMoolaAsset[currencyKey] != address(0)) {
-            price = IUbeswapAdapter(ubeswapAdapterAddress).getPrice(equivalentMoolaAsset[currencyKey]);
+        else if (equivalentMoolaAsset[_currencyKey] != address(0)) {
+            price = IUbeswapAdapter(ubeswapAdapterAddress).getPrice(equivalentMoolaAsset[_currencyKey]);
         }
         
         price = 0;
     }
 
     /**
-    * @dev Returns the address of each lending pool available on Moola
-    * @return address[] The address of each lending pool on Moola
+    * @notice Returns the address of each lending pool available on Moola.
+    * @return address[] The address of each lending pool on Moola.
     */
     function getAvailableMoolaLendingPools() external view override returns (address[] memory) {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
@@ -81,59 +86,68 @@ contract MoolaAdapter is IMoolaAdapter, Ownable {
     }
 
     /**
-    * @dev Checks whether the given token has a lending pool on Moola
-    * @param token Address of the token
-    * @return bool Whether the token has a lending pool
+    * @notice Checks whether the given token has a lending pool on Moola.
+    * @param _token Address of the token.
+    * @return bool Whether the token has a lending pool.
     */
-    function checkIfTokenHasLendingPool(address token) external view override returns (bool) {
-        return (getLendingPoolAddress(token) != address(0));
+    function checkIfTokenHasLendingPool(address _token) external view override returns (bool) {
+        return (getLendingPoolAddress(_token) != address(0));
     }
 
     /**
-    * @dev Returns the address of the token's lending pool contract, if it exists
-    * @param token Address of the token
-    * @return address Address of the token's lending pool contract
+    * @notice Returns the address of the token's lending pool contract, if it exists.
+    * @param _token Address of the token.
+    * @return address Address of the token's lending pool contract.
     */
-    function getLendingPoolAddress(address token) public view override returns (address) {
-        require(token != address(0), "MoolaAdapter: invalid address for token.");
+    function getLendingPoolAddress(address _token) public view override returns (address) {
+        require(_token != address(0), "MoolaAdapter: invalid address for token.");
 
-        // Check if token is interest-bearing token
-        if (moolaAssets[token].lendingPool != address(0)) {
-            return moolaAssets[token].lendingPool;
+        // Check if token is interest-bearing token.
+        if (moolaAssets[_token].lendingPool != address(0)) {
+            return moolaAssets[_token].lendingPool;
         }
-        // Check if token is underlying token
-        else if (equivalentMoolaAsset[token] != address(0)) {
-            return  moolaAssets[equivalentMoolaAsset[token]].lendingPool;
+        // Check if token is underlying token.
+        else if (equivalentMoolaAsset[_token] != address(0)) {
+            return  moolaAssets[equivalentMoolaAsset[_token]].lendingPool;
         }
 
-        // Token is not supported
+        // Token is not supported.
         return address(0);
     }
 
     /**
-    * @dev Given the address of a lending pool, returns the lending pool's interest-bearing token and underlying token
-    * @param lendingPoolAddress Address of the lending pool.
-    * @return (address, address) Address of the lending pool's interest-bearing token and address of the underlying token
+    * @notice Given the address of a lending pool, returns the lending pool's interest-bearing token and underlying token.
+    * @param _lendingPoolAddress Address of the lending pool.
+    * @return (address, address) Address of the lending pool's interest-bearing token and address of the underlying token.
     */
-    function getAssetsForLendingPool(address lendingPoolAddress) external view override returns (address, address) {
-        require(lendingPoolAddress != address(0), "MoolaAdapter: invalid address for lending pool.");
+    function getAssetsForLendingPool(address _lendingPoolAddress) external view override returns (address, address) {
+        require(_lendingPoolAddress != address(0), "MoolaAdapter: invalid address for lending pool.");
 
-        return (lendingPools[lendingPoolAddress], moolaAssets[lendingPools[lendingPoolAddress]].underlyingAsset);
+        return (lendingPools[_lendingPoolAddress], moolaAssets[lendingPools[_lendingPoolAddress]].underlyingAsset);
     }
 
     /**
-    * @dev Given the address of an interest-bearing token, returns the token's underlying asset
-    * @param interestBearingToken Address of the interest-bearing token
-    * @return address Address of the token's underlying asset
+    * @notice Given the address of an interest-bearing token, returns the token's underlying asset.
+    * @param _interestBearingToken Address of the interest-bearing token.
+    * @return address Address of the token's underlying asset.
     */
-    function getUnderlyingAsset(address interestBearingToken) external view override returns (address) {
-        require(interestBearingToken != address(0), "MoolaAdapter: invalid address for interest-bearing token.");
+    function getUnderlyingAsset(address _interestBearingToken) external view override returns (address) {
+        require(_interestBearingToken != address(0), "MoolaAdapter: invalid address for interest-bearing token.");
 
-        return moolaAssets[interestBearingToken].underlyingAsset;
+        return moolaAssets[_interestBearingToken].underlyingAsset;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
+    /**
+    * @notice Adds support for a new Moola asset to the platform.
+    * @dev Only the contract owner can call this function.
+    * @param _underlyingAsset Address of the underlying asset.
+    *                         Ex) CELO.
+    * @param _interestBearingToken Address of the interest-bearing token associated with the underlying asset.
+    *                              Ex) mCELO.
+    * @param _lendingPool Address of the lending pool for the given asset.
+    */
     function addMoolaAsset(address _underlyingAsset, address _interestBearingToken, address _lendingPool) external onlyOwner {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
 
@@ -141,8 +155,8 @@ contract MoolaAdapter is IMoolaAdapter, Ownable {
         require(_interestBearingToken != address(0), "MoolaAdapter: invalid interest-bearing token address.");
         require(_lendingPool != address(0), "MoolaAdapter: invalid lending pool address.");
         require(moolaAssets[_interestBearingToken].underlyingAsset == address(0), "MoolaAdapter: asset already exists.");
-        require(IAssetHandler(assetHandlerAddress).isValidAsset(_underlyingAsset), "MoolaAdapter: underlying asset is not available");
-        require(IAssetHandler(assetHandlerAddress).isValidAsset(_interestBearingToken), "MoolaAdapter: interest bearing token is not available");
+        require(IAssetHandler(assetHandlerAddress).isValidAsset(_underlyingAsset), "MoolaAdapter: underlying asset is not available.");
+        require(IAssetHandler(assetHandlerAddress).isValidAsset(_interestBearingToken), "MoolaAdapter: interest bearing token is not available.");
 
         moolaAssets[_interestBearingToken] = MoolaAsset(_lendingPool, _underlyingAsset);
         equivalentMoolaAsset[_underlyingAsset] = _interestBearingToken;

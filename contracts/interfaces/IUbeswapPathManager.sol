@@ -4,20 +4,21 @@ pragma solidity >=0.7.6;
 
 interface IUbeswapPathManager {
     /**
-    * @dev Returns the path from 'fromAsset' to 'toAsset'
-    * @notice The path is found manually before being stored in this contract
-    * @param fromAsset Token to swap from
-    * @param toAsset Token to swap to
-    * @return address[] The pre-determined optimal path from 'fromAsset' to 'toAsset'
+    * @notice Returns the path from '_fromAsset' to '_toAsset'.
+    * @dev The path is found manually before being stored in this contract.
+    * @param _fromAsset Token to swap from.
+    * @param _toAsset Token to swap to.
+    * @return address[] The pre-determined optimal path from '_fromAsset' to '_toAsset'.
     */
-    function getPath(address fromAsset, address toAsset) external view returns (address[] memory);
+    function getPath(address _fromAsset, address _toAsset) external view returns (address[] memory);
 
     /**
-    * @dev Sets the path from 'fromAsset' to 'toAsset'
-    * @notice The path is found manually before being stored in this contract
-    * @param fromAsset Token to swap from
-    * @param toAsset Token to swap to
-    * @param newPath The pre-determined optimal path between the two assets
+    * @notice Sets the path from '_fromAsset' to '_toAsset'.
+    * @dev The path is found manually before being stored in this contract.
+    * @dev Only the contract owner can call this function.
+    * @param _fromAsset Token to swap from.
+    * @param _toAsset Token to swap to.
+    * @param _newPath The pre-determined optimal path between the two assets.
     */
-    function setPath(address fromAsset, address toAsset, address[] calldata newPath) external;
+    function setPath(address _fromAsset, address _toAsset, address[] calldata _newPath) external;
 }
