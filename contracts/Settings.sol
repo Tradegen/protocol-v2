@@ -9,45 +9,47 @@ import './interfaces/ISettings.sol';
 import './openzeppelin-solidity/contracts/Ownable.sol';
 
 contract Settings is ISettings, Ownable {
-    mapping (string => uint) public parameters;
+    // (parameter name => parameter value).
+    mapping (string => uint256) public parameters;
 
     constructor() Ownable() {}
 
     /* ========== VIEWS ========== */
 
     /**
-    * @dev Given the name of a parameter, returns the value of the parameter
-    * @param parameter The name of the parameter to get value for
-    * @return uint The value of the given parameter
+    * @notice Returns the value of the given parameter.
+    * @param _parameter The name of the parameter.
+    * @return uint256 The value of the given parameter.
     */
-    function getParameterValue(string memory parameter) external view override returns(uint) {
-        return parameters[parameter];
+    function getParameterValue(string memory _parameter) external view override returns (uint256) {
+        return parameters[_parameter];
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /**
-    * @dev Updates the address for the given contract; meant to be called by Settings contract owner
-    * @param parameter The name of the parameter to change
-    * @param newValue The new value of the given parameter
+    * @notice Updates the address for the given contract.
+    * @dev This function can only be called by the owner of the Settings contract.
+    * @param _parameter The name of the parameter to change
+    * @param _newValue The new value of the given parameter
     */
-    function setParameterValue(string memory parameter, uint newValue) external onlyOwner {
-        require(newValue > 0, "Settings: Value cannot be negative");
+    function setParameterValue(string memory _parameter, uint256 _newValue) external onlyOwner {
+        require(_newValue >= 0, "Settings: Value cannot be negative.");
 
-        uint oldValue = parameters[parameter];
-        parameters[parameter] = newValue;
+        uint256 oldValue = parameters[_parameter];
+        parameters[_parameter] = _newValue;
 
-        emit SetParameterValue(parameter, oldValue, newValue);
+        emit SetParameterValue(_parameter, oldValue, _newValue);
     }
 
     /* ========== MODIFIERS ========== */
 
-    modifier isValidAddress(address addressToCheck) {
-        require(addressToCheck != address(0), "Settings: Address is not valid");
+    modifier isValidAddress(address _addressToCheck) {
+        require(_addressToCheck != address(0), "Settings: Address is not valid.");
         _;
     }
 
     /* ========== EVENTS ========== */
 
-    event SetParameterValue(string parameter,uint oldValue, uint newValue);
+    event SetParameterValue(string parameter, uint256 oldValue, uint256 newValue);
 }

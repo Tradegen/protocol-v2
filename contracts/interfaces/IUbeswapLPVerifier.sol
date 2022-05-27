@@ -4,9 +4,9 @@ pragma solidity >=0.7.6;
 
 interface IUbeswapLPVerifier {
     /**
-    * @dev Given the address of a farm, returns the farm's staking token and reward token
-    * @param farmAddress Address of the farm
-    * @return (address, address) Address of the staking token and reward token
+    * @notice Given the address of a farm, returns the farm's staking token and reward token.
+    * @param _farmAddress Address of the farm.
+    * @return (address, address) Address of the staking token and reward token.
     */
-    function getFarmTokens(address farmAddress) external view returns (address, address);
+    function getFarmTokens(address _farmAddress) external view returns (address, address);
 }

@@ -19,10 +19,14 @@ contract UbeswapERC20PriceCalculator is IPriceCalculator {
 
     /* ========== VIEWS ========== */
 
-    function getUSDPrice(address asset) external view override returns (uint) {
-        require(asset != address(0), "UbeswapERC20PriceCalculator: invalid asset address");
-
+    /**
+    * @notice Returns the USD price of the given asset.
+    * @param _asset Address of the asset.
+    * @return uint256 USD price of the asset.
+    */
+    function getUSDPrice(address _asset) external view override returns (uint256) {
         address ubeswapAdapterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapAdapter");
-        return IUbeswapAdapter(ubeswapAdapterAddress).getPrice(asset);
+
+        return IUbeswapAdapter(ubeswapAdapterAddress).getPrice(_asset);
     }
 }

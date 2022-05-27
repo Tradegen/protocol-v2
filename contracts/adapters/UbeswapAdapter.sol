@@ -21,11 +21,11 @@ import '../interfaces/IUbeswapAdapter.sol';
 import '../openzeppelin-solidity/contracts/SafeMath.sol';
 
 contract UbeswapAdapter is IUbeswapAdapter {
-    using SafeMath for uint;
+    using SafeMath for uint256;
 
     // Max slippage percent allowed.
     // 10% slippage.
-    uint public constant override MAX_SLIPPAGE_PERCENT = 10;
+    uint256 public constant override MAX_SLIPPAGE_PERCENT = 10;
 
     IAddressResolver public immutable ADDRESS_RESOLVER;
 
@@ -40,7 +40,7 @@ contract UbeswapAdapter is IUbeswapAdapter {
     * @param _currencyKey Address of the asset.
     * @return uint Price of the asset.
     */
-    function getPrice(address _currencyKey) external view override returns(uint) {
+    function getPrice(address _currencyKey) external view override returns(uint256) {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
         address ubeswapRouterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapRouter");
         address stableCoinAddress = IAssetHandler(assetHandlerAddress).getStableCoinAddress();
@@ -57,7 +57,7 @@ contract UbeswapAdapter is IUbeswapAdapter {
         address ubeswapPathManagerAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapPathManager");
         address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(currencyKey, stableCoinAddress);
         // 1 token -> USD.
-        uint[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsOut(10 ** _getDecimals(currencyKey), path);
+        uint256[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsOut(10 ** _getDecimals(currencyKey), path);
 
         return amounts[amounts.length - 1];
     }
@@ -70,7 +70,7 @@ contract UbeswapAdapter is IUbeswapAdapter {
     * @param _currencyKeyOut Address of the asset to be swap to.
     * @return uint Amount out of the asset.
     */
-    function getAmountsOut(uint _numberOfTokens, address _currencyKeyIn, address _currencyKeyOut) external view override returns (uint) {
+    function getAmountsOut(uint256 _numberOfTokens, address _currencyKeyIn, address _currencyKeyOut) external view override returns (uint256) {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
         address ubeswapRouterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapRouter");
 
@@ -80,7 +80,7 @@ contract UbeswapAdapter is IUbeswapAdapter {
 
         address ubeswapPathManagerAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapPathManager");
         address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(_currencyKeyIn, _currencyKeyOut);
-        uint[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsOut(_numberOfTokens, path);
+        uint256[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsOut(_numberOfTokens, path);
 
         return amounts[1];
     }
@@ -92,7 +92,7 @@ contract UbeswapAdapter is IUbeswapAdapter {
     * @param _currencyKeyOut Address of the asset to be swap to.
     * @return uint Amount out input asset needed.
     */
-    function getAmountsIn(uint _numberOfTokens, address _currencyKeyIn, address _currencyKeyOut) external view override returns (uint) {
+    function getAmountsIn(uint _numberOfTokens, address _currencyKeyIn, address _currencyKeyOut) external view override returns (uint256) {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
         address ubeswapRouterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapRouter");
 
@@ -102,7 +102,7 @@ contract UbeswapAdapter is IUbeswapAdapter {
 
         address ubeswapPathManagerAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapPathManager");
         address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(_currencyKeyIn, _currencyKeyOut);
-        uint[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsIn(_numberOfTokens, path);
+        uint256[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsIn(_numberOfTokens, path);
 
         return amounts[1];
     }
@@ -119,13 +119,13 @@ contract UbeswapAdapter is IUbeswapAdapter {
         address[] memory farmAddresses = new address[](numberOfAvailableFarms);
 
         //Get supported LP tokens
-        for (uint i = 0; i < numberOfAvailableFarms; i++)
+        for (uint256 i = 0; i < numberOfAvailableFarms; i++)
         {
             poolAddresses[i] = IUbeswapPoolManager(ubeswapPoolManagerAddress).poolsByIndex(i);
         }
 
         //Get supported farms
-        for (uint i = 0; i < numberOfAvailableFarms; i++)
+        for (uint256 i = 0; i < numberOfAvailableFarms; i++)
         {
             IUbeswapPoolManager.PoolInfo memory farm = IUbeswapPoolManager(ubeswapPoolManagerAddress).pools(poolAddresses[i]);
             farmAddresses[i] = farm.poolAddress;
@@ -155,7 +155,7 @@ contract UbeswapAdapter is IUbeswapAdapter {
     * @param _farmAddress Address of the farm on Ubeswap.
     * @return uint Amount of UBE available.
     */
-    function getAvailableRewards(address _poolAddress, address _farmAddress) external view override returns (uint) {
+    function getAvailableRewards(address _poolAddress, address _farmAddress) external view override returns (uint256) {
         require(_poolAddress != address(0), "UbeswapAdapter: invalid pool address.");
 
         return IStakingRewards(_farmAddress).earned(_poolAddress);
@@ -166,18 +166,18 @@ contract UbeswapAdapter is IUbeswapAdapter {
     * @param _tokenA First token in pair.
     * @param _tokenB Second token in pair.
     * @param _numberOfLPTokens Number of LP tokens for the given pair.
-    * @return (uint, uint) The number of tokens for _tokenA and _tokenB.
+    * @return (uint256, uint256) The number of tokens for _tokenA and _tokenB.
     */
-    function getTokenAmountsFromPair(address _tokenA, address _tokenB, uint _numberOfLPTokens) external view override returns (uint, uint) {
+    function getTokenAmountsFromPair(address _tokenA, address _tokenB, uint256 _numberOfLPTokens) external view override returns (uint256, uint256) {
         address pair = getPair(_tokenA, _tokenB);
         require(pair != address(0), "UbeswapAdapter: invalid address for pair.");
 
-        uint pairBalanceTokenA = IERC20(_tokenA).balanceOf(pair);
-        uint pairBalanceTokenB = IERC20(_tokenB).balanceOf(pair);
-        uint totalSupply = IERC20(pair).totalSupply();
+        uint256 pairBalanceTokenA = IERC20(_tokenA).balanceOf(pair);
+        uint256 pairBalanceTokenB = IERC20(_tokenB).balanceOf(pair);
+        uint256 totalSupply = IERC20(pair).totalSupply();
 
-        uint amountA = pairBalanceTokenA.mul(_numberOfLPTokens).div(totalSupply);
-        uint amountB = pairBalanceTokenB.mul(_numberOfLPTokens).div(totalSupply);
+        uint256 amountA = pairBalanceTokenA.mul(_numberOfLPTokens).div(totalSupply);
+        uint256 amountB = pairBalanceTokenB.mul(_numberOfLPTokens).div(totalSupply);
 
         return (amountA, amountB);
     }
@@ -188,9 +188,9 @@ contract UbeswapAdapter is IUbeswapAdapter {
     * @notice Get the decimals of an asset.
     * @dev Assumes that the given asset follows ERC20 standard.
     * @param _asset Address of the asset.
-    * @return number of decimals of the asset.
+    * @return uint256 Number of decimals of the asset.
     */
-    function _getDecimals(address _asset) internal view returns (uint) {
+    function _getDecimals(address _asset) internal view returns (uint256) {
         return IERC20(_asset).decimals();
     }
 }

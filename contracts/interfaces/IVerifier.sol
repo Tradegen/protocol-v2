@@ -4,13 +4,13 @@ pragma solidity >=0.7.6;
 
 interface IVerifier {
     /**
-    * @dev Parses the transaction data to make sure the transaction is valid
-    * @param pool Address of the pool
-    * @param to External contract address
-    * @param data Transaction call data
+    * @notice Parses the transaction data to make sure the transaction is valid.
+    * @param _pool Address of the pool
+    * @param _to Address of the external contract being called.
+    * @param _data Transaction call data
     * @return (bool, address, uint) Whether the transaction is valid, the received asset, and the transaction type.
     */
-    function verify(address pool, address to, bytes calldata data) external returns (bool, address, uint);
+    function verify(address _pool, address _to, bytes calldata _data) external returns (bool, address, uint256);
 
-    event ExchangeFrom(address fundAddress, address sourceAsset, uint sourceAmount, address destinationAsset);
+    event ExchangeFrom(address fundAddress, address sourceAsset, uint256 sourceAmount, address destinationAsset);
 }

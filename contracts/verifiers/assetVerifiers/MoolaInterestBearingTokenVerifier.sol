@@ -3,59 +3,59 @@
 pragma solidity ^0.8.3;
 pragma experimental ABIEncoderV2;
 
-//Libraries
+// Libraries.
 import "../../libraries/TxDataUtils.sol";
 import "../../openzeppelin-solidity/contracts/SafeMath.sol";
 
-//Inheritance
+// Inheritance.
 import "./ERC20Verifier.sol";
 
-//Internal references
+// Internal references.
 import "../../interfaces/IMoolaAdapter.sol";
 
 contract MoolaInterestBearingTokenVerifier is ERC20Verifier {
-    using SafeMath for uint;
+    using SafeMath for uint256;
 
     constructor(address _addressResolver) ERC20Verifier(_addressResolver) {}
 
     /* ========== VIEWS ========== */
 
     /**
-    * @dev Parses the transaction data to make sure the transaction is valid
-    * @param pool Address of the pool
-    * @param to External contract address
-    * @param data Transaction call data
+    * @notice Parses the transaction data to make sure the transaction is valid.
+    * @param _pool Address of the pool.
+    * @param _to Address of the external contract.
+    * @param _data Transaction call data.
     * @return (bool, address, uint) Whether the transaction is valid, the received asset, and the transaction type.
     */
-    function verify(address pool, address to, bytes calldata data) external virtual override returns (bool, address, uint) {
-        bytes4 method = getMethod(data);
+    function verify(address _pool, address _to, bytes calldata _data) external virtual override returns (bool, address, uint256) {
+        bytes4 method = getMethod(_data);
 
         if (method == bytes4(keccak256("approve(address,uint256)")))
         {
-            address spender = convert32toAddress(getInput(data, 0));
-            uint amount = uint(getInput(data, 1));
+            address spender = convert32toAddress(getInput(_data, 0));
+            uint256 amount = uint256(getInput(_data, 1));
 
-            //Only check for contract verifier, since an asset probably won't call transferFrom() on another asset
+            // Only check for contract verifier, since an asset probably won't call transferFrom() on another asset.
             address verifier = ADDRESS_RESOLVER.contractVerifiers(spender);
 
-            //Checks if the spender is an approved address
-            require(verifier != address(0), "MoolaInterestBearingTokenVerifier: unsupported spender approval"); 
+            // Checks if the spender is an approved address.
+            require(verifier != address(0), "MoolaInterestBearingTokenVerifier: Unsupported spender approval."); 
 
-            emit Approve(pool, spender, amount);
+            emit Approve(_pool, spender, amount);
 
             return (true, address(0), 1);
         }
         else if (method == bytes4(keccak256("redeem(uint256)")))
         {
-            uint amount = uint(getInput(data, 0));
+            uint256 amount = uint256(getInput(_data, 0));
 
             address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
             address moolaAdapterAddress = ADDRESS_RESOLVER.getContractAddress("MoolaAdapter");
-            address underlyingAsset = IMoolaAdapter(moolaAdapterAddress).getUnderlyingAsset(to);
+            address underlyingAsset = IMoolaAdapter(moolaAdapterAddress).getUnderlyingAsset(_to);
 
-            require(IAssetHandler(assetHandlerAddress).isValidAsset(underlyingAsset), "MoolaInterestBearingTokenVerifier: unsupported underlying asset.");
+            require(IAssetHandler(assetHandlerAddress).isValidAsset(underlyingAsset), "MoolaInterestBearingTokenVerifier: Unsupported underlying asset.");
 
-            emit Redeem(pool, to, amount);
+            emit Redeem(_pool, _to, amount);
 
             return (true, address(0), 2);
         }
@@ -65,5 +65,5 @@ contract MoolaInterestBearingTokenVerifier is ERC20Verifier {
 
     /* ========== EVENTS ========== */
 
-    event Redeem(address indexed pool, address indexed interestBearingToken, uint amount);
+    event Redeem(address indexed pool, address indexed interestBearingToken, uint256 amount);
 }

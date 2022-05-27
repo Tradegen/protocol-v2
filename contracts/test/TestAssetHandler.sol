@@ -5,7 +5,7 @@ pragma solidity ^0.8.3;
 contract TestAssetHandler {
 
     address public stableCoinAddress;
-    mapping (address => uint) public assetTypes;
+    mapping (address => uint256) public assetTypes;
 
     constructor() {}
 

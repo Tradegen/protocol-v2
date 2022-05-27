@@ -9,72 +9,72 @@ interface IMarketplace {
         address poolAddress;
         address seller;
         bool exists;
-        uint tokenClass;
-        uint numberOfTokens;
-        uint price;
+        uint256 tokenClass;
+        uint256 numberOfTokens;
+        uint256 price;
     }
 
     /**
-    * @dev Given the address of a user and a pool address, returns the index of the marketplace listing
-    * @notice Returns 0 if user doesn't have a listing in the given pool
-    * @param user Address of the user
-    * @param poolAddress Address of the pool's token
-    * @return uint Index of the user's marketplace listing
+    * @notice Returns the index of the user's marketplace listing for the given pool.
+    * @dev Returns 0 if the user doesn't have a listing for the given pool.
+    * @param _user Address of the user.
+    * @param _poolAddress Address of the pool.
+    * @return uint256 Index of the user's marketplace listing.
     */
-    function getListingIndex(address user, address poolAddress) external view returns (uint);
+    function getListingIndex(address _user, address _poolAddress) external view returns (uint256);
 
     /**
-    * @dev Given the index of a marketplace listing, returns the listing's data
-    * @param index Index of the marketplace listing
-    * @return (address, address, uint, uint, uint) Pool token for sale, address of the seller, pool token's class, number of tokens for sale, USD per token
+    * @notice Given the index of a marketplace listing, returns the listing's data.
+    * @param _index Index of the marketplace listing.
+    * @return (address, address, uint256, uint256, uint256) Address of the pool token, address of the seller, pool token's class, number of tokens for sale, USD per token.
     */
-    function getMarketplaceListing(uint index) external view returns (address, address, uint, uint, uint);
+    function getMarketplaceListing(uint256 _index) external view returns (address, address, uint256, uint256, uint256);
 
     /**
-    * @dev Purchases the specified number of tokens from the marketplace listing
-    * @param poolAddress Address of the pool token for sale
-    * @param index Index of the marketplace listing
-    * @param numberOfTokens Number of tokens to purchase
+    * @notice Purchases the given number of tokens from the marketplace listing.
+    * @param _poolAddress Address of the pool.
+    * @param _index Index of the marketplace listing.
+    * @param _numberOfTokens Number of tokens to purchase.
     */
-    function purchase(address poolAddress, uint index, uint numberOfTokens) external;
+    function purchase(address _poolAddress, uint256 _index, uint256 _numberOfTokens) external;
 
     /**
-    * @dev Creates a new marketplace listing with the given price and quantity
-    * @param poolAddress Address of the pool token for sale
-    * @param tokenClass The class of the pool's token
-    * @param numberOfTokens Number of tokens to sell
-    * @param price USD per token
+    * @notice Creates a new marketplace listing with the given price and quantity.
+    * @param _poolAddress Address of the pool.
+    * @param _tokenClass The class of the pool's token.
+    * @param _numberOfTokens Number of tokens to sell.
+    * @param _price USD per token.
     */
-    function createListing(address poolAddress, uint tokenClass, uint numberOfTokens, uint price) external;
+    function createListing(address _poolAddress, uint256 _tokenClass, uint256 _numberOfTokens, uint256 _price) external;
 
     /**
-    * @dev Removes the marketplace listing at the given index
-    * @param poolAddress Address of the pool's token for sale
-    * @param index Index of the marketplace listing
+    * @notice Removes the marketplace listing at the given index.
+    * @param _poolAddress Address of the pool's token for sale.
+    * @param _index Index of the marketplace listing.
     */
-    function removeListing(address poolAddress, uint index) external;
+    function removeListing(address _poolAddress, uint256 _index) external;
 
     /**
-    * @dev Updates the price of the given marketplace listing
-    * @param poolAddress Address of the pool's token for sale
-    * @param index Index of the marketplace listing
-    * @param newPrice USD per token
+    * @notice Updates the price of the given marketplace listing.
+    * @param _poolAddress Address of the pool's token for sale.
+    * @param _index Index of the marketplace listing.
+    * @param _newPrice USD per token.
     */
-    function updatePrice(address poolAddress, uint index, uint newPrice) external;
+    function updatePrice(address _poolAddress, uint256 _index, uint256 _newPrice) external;
 
     /**
-    * @dev Updates the number of tokens for sale of the given marketplace listing
-    * @param poolAddress Address of the pool's token for sale
-    * @param index Index of the marketplace listing
-    * @param newQuantity Number of tokens to sell
+    * @notice Updates the number of tokens for sale of the given marketplace listing.
+    * @param _poolAddress Address of the pool's token for sale.
+    * @param _index Index of the marketplace listing.
+    * @param _newQuantity Number of tokens to sell.
     */
-    function updateQuantity(address poolAddress, uint index, uint newQuantity) external;
+    function updateQuantity(address _poolAddress, uint256 _index, uint256 _newQuantity) external;
 
     /* ========== EVENTS ========== */
 
-    event CreatedListing(address indexed seller, address indexed poolAddress, uint marketplaceListing, uint tokenClass, uint numberOfTokens, uint price);
-    event RemovedListing(address indexed seller, address indexed poolAddress, uint marketplaceListing);
-    event UpdatedPrice(address indexed seller, address indexed poolAddress, uint marketplaceListing, uint newPrice);
-    event UpdatedQuantity(address indexed seller, address indexed poolAddress, uint marketplaceListing, uint newQuantity);
-    event Purchased(address indexed buyer, address indexed poolAddress, uint marketplaceListing, uint numberOfTokens, uint tokenPrice);
+    event CreatedListing(address seller, address poolAddress, uint256 marketplaceListing, uint256 tokenClass, uint256 numberOfTokens, uint256 price);
+    event RemovedListing(address seller, address poolAddress, uint256 marketplaceListing);
+    event UpdatedPrice(address seller, address poolAddress, uint256 marketplaceListing, uint256 newPrice);
+    event UpdatedQuantity(address seller, address poolAddress, uint256 marketplaceListing, uint256 newQuantity);
+    event Purchased(address buyer, address poolAddress, uint256 marketplaceListing, uint256 numberOfTokens, uint256 tokenPrice);
 }

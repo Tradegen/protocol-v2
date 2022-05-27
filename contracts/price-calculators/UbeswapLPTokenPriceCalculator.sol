@@ -2,23 +2,23 @@
 
 pragma solidity ^0.8.3;
 
-//Inheritance
+// Inheritance.
 import '../interfaces/IPriceCalculator.sol';
 
-//Interfaces
+// Interfaces.
 import '../interfaces/IUbeswapAdapter.sol';
 import '../interfaces/IAddressResolver.sol';
 import '../interfaces/IERC20.sol';
 
-//Ubeswap interfaces
+// Ubeswap interfaces.
 import '../interfaces/Ubeswap/IUniswapV2Pair.sol';
 
-//Libraries
+// Libraries.
 import "../libraries/TradegenMath.sol";
 import "../openzeppelin-solidity/contracts/SafeMath.sol";
 
 contract UbeswapLPTokenPriceCalculator is IPriceCalculator {
-    using SafeMath for uint;
+    using SafeMath for uint256;
 
     IAddressResolver public ADDRESS_RESOLVER;
 
@@ -28,25 +28,34 @@ contract UbeswapLPTokenPriceCalculator is IPriceCalculator {
 
     /* ========== VIEWS ========== */
 
-    function getUSDPrice(address pair) external view override returns (uint) {
-        require(pair != address(0), "UbeswapLPTokenPriceCalculator: invalid asset address");
+    /**
+    * @notice Returns the USD price of the given LP token.
+    * @param _pair Address of the LP token.
+    * @return uint256 USD price of the LP token.
+    */
+    function getUSDPrice(address _pair) external view override returns (uint256) {
+        require(_pair != address(0), "UbeswapLPTokenPriceCalculator: Invalid LP token address.");
 
-        address token0 = IUniswapV2Pair(pair).token0();
-        address token1 = IUniswapV2Pair(pair).token1();
-        uint totalSupply = IUniswapV2Pair(pair).totalSupply();
-        (uint reserve0, uint reserve1, ) = IUniswapV2Pair(pair).getReserves();
+        // Define 'r' here so 'reserve0' and 'reserve1' can be scoped.
+        // This prevents 'stack-too-deep' error.
+        uint256 r;
 
-        reserve0 = uint(reserve0).mul(10**18).div(10**uint(IERC20(token0).decimals())); // decimal = 18
-        reserve1 = uint(reserve1).mul(10**18).div(10**uint(IERC20(token1).decimals())); // decimal = 18
+        address token0 = IUniswapV2Pair(_pair).token0();
+        address token1 = IUniswapV2Pair(_pair).token1();
+        
+        {
+        (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(pair).getReserves();
 
-        uint r = TradegenMath.sqrt(reserve0.mul(reserve1)); // decimal = 18
+        reserve0 = uint256(reserve0).mul(10**18).div(10**uint256(IERC20(token0).decimals()));
+        reserve1 = uint256(reserve1).mul(10**18).div(10**uint256(IERC20(token1).decimals()));
+
+        r = TradegenMath.sqrt(reserve0.mul(reserve1));
+        }
 
         address ubeswapAdapterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapAdapter");
-        uint price0 = IUbeswapAdapter(ubeswapAdapterAddress).getPrice(token0);
-        uint price1 = IUbeswapAdapter(ubeswapAdapterAddress).getPrice(token1);
+        uint256 price0 = IUbeswapAdapter(ubeswapAdapterAddress).getPrice(token0);
+        uint256 price1 = IUbeswapAdapter(ubeswapAdapterAddress).getPrice(token1);
 
-        uint p = TradegenMath.sqrt(price0.mul(price1)); // decimal = 18
-
-        return r.mul(p).mul(2).div(totalSupply);
+        return r.mul(TradegenMath.sqrt(price0.mul(price1))).mul(2).div(IUniswapV2Pair(_pair).totalSupply());
     }
 }

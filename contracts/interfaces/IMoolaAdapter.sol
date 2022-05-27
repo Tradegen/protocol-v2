@@ -9,7 +9,7 @@ interface IMoolaAdapter {
     * @param _currencyKey Address of the asset.
     * @return price Price of the asset.
     */
-    function getPrice(address _currencyKey) external view returns (uint price);
+    function getPrice(address _currencyKey) external view returns (uint256 price);
 
     /**
     * @notice Returns the address of each lending pool available on Moola.

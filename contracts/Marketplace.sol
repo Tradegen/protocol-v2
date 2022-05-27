@@ -3,16 +3,16 @@
 pragma solidity ^0.8.3;
 pragma experimental ABIEncoderV2;
 
-//Openzeppelin
+// Openzeppelin.
 import "./openzeppelin-solidity/contracts/SafeMath.sol";
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "./openzeppelin-solidity/contracts/ERC1155/IERC1155.sol";
 import "./openzeppelin-solidity/contracts/ERC1155/ERC1155Holder.sol";
 
-//Inheritance
+// Inheritance.
 import './interfaces/IMarketplace.sol';
 
-//Interfaces
+// Interfaces.
 import './interfaces/IAddressResolver.sol';
 import './interfaces/ISettings.sol';
 import './interfaces/IAssetHandler.sol';
@@ -20,17 +20,24 @@ import './interfaces/ICappedPool.sol';
 import './interfaces/IRouter.sol';
 
 contract Marketplace is IMarketplace, ERC1155Holder {
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     IAddressResolver public immutable ADDRESS_RESOLVER;
 
-    mapping (uint => MarketplaceListing) public marketplaceListings; //starts at index 1; increases without bounds
-    uint public numberOfMarketplaceListings;
-    mapping (address => mapping (address => uint)) public userToListingIndex; //max 1 listing per user per pool
+    // (listing index => listing info).
+    // Index starts at 1 and increases without bounds.
+    mapping (uint256 => MarketplaceListing) public marketplaceListings;
 
-    //Address of the pool's manager (used for sending manager's fee)
-    //Set to address(0) if invalid pool
+    // Keep track of the cumulative number of marketplace listings.
+    // This ensures that listing indexes are always unique.
+    uint256 public numberOfMarketplaceListings;
+
+    // (user => pool address => listing index).
+    // User is limited to 1 listing per pool.
+    mapping (address => mapping (address => uint256)) public userToListingIndex;
+
+    // (pool address => pool's manager).
     mapping (address => address) public poolManagers; 
 
     constructor(address _addressResolver) {
@@ -39,200 +46,199 @@ contract Marketplace is IMarketplace, ERC1155Holder {
 
     /* ========== VIEWS ========== */
 
-   /**
-    * @dev Given the address of a user and a pool address, returns the index of the marketplace listing
-    * @notice Returns 0 if user doesn't have a listing in the given pool
-    * @param user Address of the user
-    * @param poolAddress Address of the pool's token
-    * @return uint Index of the user's marketplace listing
+    /**
+    * @notice Returns the index of the user's marketplace listing for the given pool.
+    * @dev Returns 0 if the user doesn't have a listing for the given pool.
+    * @param _user Address of the user.
+    * @param _poolAddress Address of the pool.
+    * @return uint256 Index of the user's marketplace listing.
     */
-    function getListingIndex(address user, address poolAddress) external view override returns (uint) {
-        require(user != address(0), "Marketplace: invalid user address");
-        require(poolAddress != address(0), "Marketplace: invalid pool address");
-
-        return userToListingIndex[poolAddress][user];
+    function getListingIndex(address _user, address _poolAddress) external view override returns (uint256) {
+        return userToListingIndex[_user][_poolAddress];
     }
 
     /**
-    * @dev Given the index of a marketplace listing, returns the listing's data
-    * @param index Index of the marketplace listing
-    * @return (address, address, uint, uint, uint) Pool token for sale, address of the seller, pool token's class, number of tokens for sale, USD per token
+    * @notice Given the index of a marketplace listing, returns the listing's data.
+    * @param _index Index of the marketplace listing.
+    * @return (address, address, uint256, uint256, uint256) Address of the pool token, address of the seller, pool token's class, number of tokens for sale, USD per token.
     */
-    function getMarketplaceListing(uint index) external view override indexInRange(index) returns (address, address, uint, uint, uint) {
-        MarketplaceListing memory listing = marketplaceListings[index];
+    function getMarketplaceListing(uint256 _index) external view override indexInRange(_index) returns (address, address, uint256, uint256, uint256) {
+        MarketplaceListing memory listing = marketplaceListings[_index];
 
         return (listing.poolAddress, listing.seller, listing.tokenClass, listing.numberOfTokens, listing.price);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-   /**
-    * @dev Purchases the specified number of tokens from the marketplace listing
-    * @param poolAddress Address of the pool token for sale
-    * @param index Index of the marketplace listing
-    * @param numberOfTokens Number of tokens to purchase
+    /**
+    * @notice Purchases the given number of tokens from the marketplace listing.
+    * @param _poolAddress Address of the pool.
+    * @param _index Index of the marketplace listing.
+    * @param _numberOfTokens Number of tokens to purchase.
     */
-    function purchase(address poolAddress, uint index, uint numberOfTokens) external override isValidPool(poolAddress) {
-        require(marketplaceListings[index].exists, "Listing doesn't exist");
-        require(numberOfTokens > 0 &&
-                numberOfTokens <= marketplaceListings[index].numberOfTokens,
-                "Quantity out of bounds");
-        require(msg.sender != marketplaceListings[index].seller, "Cannot buy your own position");
+    function purchase(address _poolAddress, uint256 _index, uint256 _numberOfTokens) external override isValidPool(_poolAddress) {
+        // Gas savings.
+        MarketplaceListing memory listing = marketplaceListings[_index];
+
+        require(listing.exists, "Marketplace: Listing doesn't exist.");
+        require(_numberOfTokens > 0 &&
+                _numberOfTokens <= listing.numberOfTokens,
+                "Marketplace: Quantity out of bounds.");
+        require(msg.sender != listing.seller, "Marketplace: Cannot buy your own position.");
         
         address settingsAddress = ADDRESS_RESOLVER.getContractAddress("Settings");
-        address routerAddress = ADDRESS_RESOLVER.getContractAddress("Router");
-        address TGEN = ADDRESS_RESOLVER.getContractAddress("TGEN");
-        uint protocolFee = ISettings(settingsAddress).getParameterValue("MarketplaceProtocolFee");
-        uint managerFee = ISettings(settingsAddress).getParameterValue("MarketplaceAssetManagerFee");
+        uint256 protocolFee = ISettings(settingsAddress).getParameterValue("MarketplaceProtocolFee");
+        uint256 managerFee = ISettings(settingsAddress).getParameterValue("MarketplaceAssetManagerFee");
         address stableCoinAddress = IAssetHandler(ADDRESS_RESOLVER.getContractAddress("AssetHandler")).getStableCoinAddress();
 
-        uint amountOfUSD = marketplaceListings[index].price.mul(numberOfTokens);
+        uint256 amountOfUSD = listing.price.mul(_numberOfTokens);
 
         IERC20(stableCoinAddress).safeTransferFrom(msg.sender, address(this), amountOfUSD);
         
-        //Transfer mcUSD to seller
-        IERC20(stableCoinAddress).safeTransfer(marketplaceListings[index].seller, amountOfUSD.mul(10000 - protocolFee - managerFee).div(10000));
+        // Transfer stablecoin to seller.
+        IERC20(stableCoinAddress).safeTransfer(listing.seller, amountOfUSD.mul(10000 - protocolFee - managerFee).div(10000));
 
-        //Swap protocol fee for TGEN and send to xTGEN contract
+        {
+        // Swap protocol fee for TGEN and send to xTGEN contract.
+        address TGEN = ADDRESS_RESOLVER.getContractAddress("TGEN");
         uint256 initialTGEN = IERC20(TGEN).balanceOf(address(this));
-        IRouter(routerAddress).swapAssetForTGEN(stableCoinAddress, amountOfUSD.mul(protocolFee).div(10000));
+        IRouter(ADDRESS_RESOLVER.getContractAddress("Router")).swapAssetForTGEN(stableCoinAddress, amountOfUSD.mul(protocolFee).div(10000));
         IERC20(TGEN).safeTransfer(ADDRESS_RESOLVER.getContractAddress("xTGEN"), IERC20(TGEN).balanceOf(address(this)).sub(initialTGEN));
-
-        //Pay manager fee
-        IERC20(stableCoinAddress).safeTransfer(ICappedPool(poolAddress).manager(), amountOfUSD.mul(managerFee).div(10000));
-
-        //Transfer tokens to buyer
-        IERC1155(poolAddress).setApprovalForAll(msg.sender, true);
-        IERC1155(poolAddress).safeTransferFrom(address(this), msg.sender, marketplaceListings[index].tokenClass, numberOfTokens, "");
-
-        //Update marketplace listing
-        if (numberOfTokens == marketplaceListings[index].numberOfTokens)
-        {
-            _removeListing(marketplaceListings[index].seller, poolAddress, index);
-        }
-        else
-        {
-            marketplaceListings[index].numberOfTokens = marketplaceListings[index].numberOfTokens.sub(numberOfTokens);
         }
 
-        emit Purchased(msg.sender, poolAddress, index, numberOfTokens, marketplaceListings[index].price);
+        // Pay manager fee.
+        IERC20(stableCoinAddress).safeTransfer(ICappedPool(_poolAddress).manager(), amountOfUSD.mul(managerFee).div(10000));
+
+        // Transfer tokens to buyer.
+        IERC1155(ICappedPool(_poolAddress).getNFTAddress()).setApprovalForAll(msg.sender, true);
+        IERC1155(ICappedPool(_poolAddress).getNFTAddress()).safeTransferFrom(address(this), msg.sender, listing.tokenClass, _numberOfTokens, "");
+
+        // Update marketplace listing.
+        if (_numberOfTokens == listing.numberOfTokens) {
+            _removeListing(listing.seller, _poolAddress, _index);
+        }
+        else {
+            marketplaceListings[_index].numberOfTokens = listing.numberOfTokens.sub(_numberOfTokens);
+        }
+
+        emit Purchased(msg.sender, _poolAddress, _index, _numberOfTokens, listing.price);
     }
 
     /**
-    * @dev Creates a new marketplace listing with the given price and quantity
-    * @param poolAddress Address of the pool token for sale
-    * @param tokenClass The class of the pool's token
-    * @param numberOfTokens Number of tokens to sell
-    * @param price USD per token
+    * @notice Creates a new marketplace listing with the given price and quantity.
+    * @param _poolAddress Address of the pool.
+    * @param _tokenClass The class of the pool's token.
+    * @param _numberOfTokens Number of tokens to sell.
+    * @param _price USD per token.
     */
-    function createListing(address poolAddress, uint tokenClass, uint numberOfTokens, uint price) external override isValidPool(poolAddress) {
-        require(userToListingIndex[poolAddress][msg.sender] == 0, "Already have a marketplace listing for this pool");
-        require(price > 0, "Price must be greater than 0");
-        require(tokenClass > 0 && tokenClass < 5, "Token class must be between 1 and 4");
-        require(numberOfTokens > 0 && numberOfTokens <= IERC1155(poolAddress).balanceOf(msg.sender, tokenClass), "Quantity out of bounds");
+    function createListing(address _poolAddress, uint256 _tokenClass, uint256 _numberOfTokens, uint256 _price) external override isValidPool(_poolAddress) {
+        require(userToListingIndex[_poolAddress][msg.sender] == 0, "Marketplace: Already have a marketplace listing for this pool.");
+        require(_price > 0, "Marketplace: Price must be greater than 0.");
+        require(_tokenClass >= 1 && _tokenClass <= 4, "Marketplace: Token class must be between 1 and 4.");
+        require(_numberOfTokens > 0 && _numberOfTokens <= IERC1155(ICappedPool(_poolAddress).getNFTAddress()).balanceOf(msg.sender, _tokenClass), "Marketplace: Quantity out of bounds.");
 
         numberOfMarketplaceListings = numberOfMarketplaceListings.add(1);
-        userToListingIndex[poolAddress][msg.sender] = numberOfMarketplaceListings;
-        marketplaceListings[numberOfMarketplaceListings] = MarketplaceListing(poolAddress, msg.sender, true, tokenClass, numberOfTokens, price);
+        userToListingIndex[_poolAddress][msg.sender] = numberOfMarketplaceListings;
+        marketplaceListings[numberOfMarketplaceListings] = MarketplaceListing(_poolAddress, msg.sender, true, _tokenClass, _numberOfTokens, _price);
 
-        //Transfer tokens to marketplace
-        IERC1155(poolAddress).safeTransferFrom(msg.sender, address(this), tokenClass, numberOfTokens, "");
+        // Transfer tokens to marketplace.
+        IERC1155(ICappedPool(_poolAddress).getNFTAddress()).safeTransferFrom(msg.sender, address(this), _tokenClass, _numberOfTokens, "");
 
-        emit CreatedListing(msg.sender, poolAddress, numberOfMarketplaceListings, tokenClass, numberOfTokens, price);
+        emit CreatedListing(msg.sender, _poolAddress, numberOfMarketplaceListings, _tokenClass, _numberOfTokens, _price);
     }
 
     /**
-    * @dev Removes the marketplace listing at the given index
-    * @param poolAddress Address of the pool's token for sale
-    * @param index Index of the marketplace listing
+    * @notice Removes the marketplace listing at the given index.
+    * @param _poolAddress Address of the pool's token for sale.
+    * @param _index Index of the marketplace listing.
     */
-    function removeListing(address poolAddress, uint index) external override isValidPool(poolAddress) indexInRange(index) onlySeller(poolAddress, index) {
-        uint numberOfTokens = marketplaceListings[index].numberOfTokens;
+    function removeListing(address _poolAddress, uint256 _index) external override isValidPool(_poolAddress) indexInRange(_index) onlySeller(_poolAddress, _index) {
+        uint256 numberOfTokens = marketplaceListings[_index].numberOfTokens;
 
-        _removeListing(msg.sender, poolAddress, index);
+        _removeListing(msg.sender, _poolAddress, _index);
 
-        //Transfer tokens to seller
-        IERC1155(poolAddress).setApprovalForAll(msg.sender, true);
-        IERC1155(poolAddress).safeTransferFrom(address(this), msg.sender, marketplaceListings[index].tokenClass, numberOfTokens, "");
+        // Transfer tokens to seller.
+        IERC1155(ICappedPool(_poolAddress).getNFTAddress()).setApprovalForAll(msg.sender, true);
+        IERC1155(ICappedPool(_poolAddress).getNFTAddress()).safeTransferFrom(address(this), msg.sender, marketplaceListings[_index].tokenClass, _numberOfTokens, "");
 
-        emit RemovedListing(msg.sender, poolAddress, index);
-    }
-
-     /**
-    * @dev Updates the price of the given marketplace listing
-    * @param poolAddress Address of the pool's token for sale
-    * @param index Index of the marketplace listing
-    * @param newPrice USD per token
-    */
-    function updatePrice(address poolAddress, uint index, uint newPrice) external override isValidPool(poolAddress) indexInRange(index) onlySeller(poolAddress, index) {
-        require(newPrice > 0, "New price must be greater than 0");
-
-        marketplaceListings[index].price = newPrice;
-
-        emit UpdatedPrice(msg.sender, poolAddress, index, newPrice);
+        emit RemovedListing(msg.sender, _poolAddress, _index);
     }
 
     /**
-    * @dev Updates the number of tokens for sale of the given marketplace listing
-    * @param poolAddress Address of the pool's token for sale
-    * @param index Index of the marketplace listing
-    * @param newQuantity Number of tokens to sell
+    * @notice Updates the price of the given marketplace listing.
+    * @param _poolAddress Address of the pool's token for sale.
+    * @param _index Index of the marketplace listing.
+    * @param _newPrice USD per token.
     */
-    function updateQuantity(address poolAddress, uint index, uint newQuantity) external override isValidPool(poolAddress) indexInRange(index) onlySeller(poolAddress, index) {
-        require(newQuantity > 0 &&
-                newQuantity <= IERC1155(poolAddress).balanceOf(msg.sender, marketplaceListings[index].tokenClass),
-                "Quantity out of bounds");
+    function updatePrice(address _poolAddress, uint256 _index, uint256 _newPrice) external override isValidPool(_poolAddress) indexInRange(_index) onlySeller(_poolAddress, _index) {
+        require(_newPrice > 0, "Marketplace: New price must be greater than 0.");
 
-        uint oldQuantity = marketplaceListings[index].numberOfTokens;
+        marketplaceListings[_index].price = _newPrice;
+
+        emit UpdatedPrice(msg.sender, _poolAddress, _index, _newPrice);
+    }
+
+    /**
+    * @notice Updates the number of tokens for sale of the given marketplace listing.
+    * @param _poolAddress Address of the pool's token for sale.
+    * @param _index Index of the marketplace listing.
+    * @param _newQuantity Number of tokens to sell.
+    */
+    function updateQuantity(address _poolAddress, uint256 _index, uint256 _newQuantity) external override isValidPool_(poolAddress) indexInRange(_index) onlySeller(_poolAddress, _index) {
+        require(_newQuantity > 0 &&
+                _newQuantity <= IERC1155(ICappedPool(_poolAddress).getNFTAddress()).balanceOf(msg.sender, marketplaceListings[_index].tokenClass),
+                "Marketplace: Quantity out of bounds.");
+
+        uint256 oldQuantity = marketplaceListings[index].numberOfTokens;
 
         marketplaceListings[index].numberOfTokens = newQuantity;
 
-        if (newQuantity > oldQuantity) {
-            //Transfer tokens to marketplace
-            IERC1155(poolAddress).safeTransferFrom(msg.sender, address(this), marketplaceListings[index].tokenClass, newQuantity.sub(oldQuantity), "");
+        if (_newQuantity > oldQuantity) {
+            // Transfer tokens to marketplace.
+            IERC1155(ICappedPool(_poolAddress).getNFTAddress()).safeTransferFrom(msg.sender, address(this), marketplaceListings[_index].tokenClass, _newQuantity.sub(oldQuantity), "");
         }
         else if (oldQuantity < newQuantity) {
-            //Transfer tokens to seller
-            IERC1155(poolAddress).setApprovalForAll(msg.sender, true);
-            IERC1155(poolAddress).safeTransferFrom(address(this), msg.sender, marketplaceListings[index].tokenClass, oldQuantity.sub(newQuantity), "");
+            //Transfer tokens to seller.
+            IERC1155(ICappedPool(_poolAddress).getNFTAddress()).setApprovalForAll(msg.sender, true);
+            IERC1155(ICappedPool(_poolAddress).getNFTAddress()).safeTransferFrom(address(this), msg.sender, marketplaceListings[_index].tokenClass, oldQuantity.sub(_newQuantity), "");
         }
 
-        emit UpdatedQuantity(msg.sender, poolAddress, index, newQuantity);
+        emit UpdatedQuantity(msg.sender, _poolAddress, _index, _newQuantity);
     }
 
     /* ========== INTERNAL FUNCTIONS ========== */
 
     /**
-    * @dev Sets the marketplace listing's 'exists' variable to false and resets quantity.
-    * @param user Address of the seller.
-    * @param poolAddress Address of the pool's token.
-    * @param index Index of the marketplace listing.
+    * @notice Sets the marketplace listing's 'exists' variable to false and resets quantity.
+    * @param _user Address of the seller.
+    * @param _poolAddress Address of the pool's token.
+    * @param _index Index of the marketplace listing.
     */
-    function _removeListing(address user, address poolAddress, uint index) internal {
-        marketplaceListings[index].exists = false;
-        marketplaceListings[index].numberOfTokens = 0;
+    function _removeListing(address _user, address _poolAddress, uint256 _index) internal {
+        marketplaceListings[_index].exists = false;
+        marketplaceListings[_index].numberOfTokens = 0;
 
-        userToListingIndex[poolAddress][user] = 0;
+        userToListingIndex[_poolAddress][_user] = 0;
     }
 
     /* ========== MODIFIERS ========== */
 
-    modifier indexInRange(uint index) {
-        require(index > 0 &&
-                index <= numberOfMarketplaceListings,
-                "Marketplace: Index out of range");
+    modifier indexInRange(uint256 _index) {
+        require(_index > 0 &&
+                _index <= numberOfMarketplaceListings,
+                "Marketplace: Index out of range.");
         _;
     }
 
-    modifier onlySeller(address poolAddress, uint index) {
-        require(index == userToListingIndex[poolAddress][msg.sender],
-                "Marketplace: Only the seller can call this function");
+    modifier onlySeller(address _poolAddress, uint256 _index) {
+        require(_index == userToListingIndex[_poolAddress][msg.sender],
+                "Marketplace: Only the seller can call this function.");
         _;
     }
 
-    modifier isValidPool(address pool) {
-        require(ADDRESS_RESOLVER.checkIfPoolAddressIsValid(pool), 
-                "Marketplace: Invalid pool");
+    modifier isValidPool(address _pool) {
+        require(ADDRESS_RESOLVER.checkIfPoolAddressIsValid(_pool), 
+                "Marketplace: Invalid pool.");
         _;
     }
 }

@@ -2,17 +2,18 @@
 
 pragma solidity ^0.8.3;
 
-//Interfaces
+// Interfaces.
 import './interfaces/IAddressResolver.sol';
 import './interfaces/IPoolManagerLogicFactory.sol';
 
-//Internal references
+// Internal references.
 import './PoolManagerLogic.sol';
 
 contract PoolManagerLogicFactory is IPoolManagerLogicFactory {
     IAddressResolver public immutable ADDRESS_RESOLVER;
 
-    mapping(address => address) public poolManagerLogics; // Pool address => PoolManagerLogic address
+    // (Pool address => PoolManagerLogic address)
+    mapping (address => address) public poolManagerLogics;
 
     constructor(address _addressResolver) {
         ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
@@ -21,49 +22,46 @@ contract PoolManagerLogicFactory is IPoolManagerLogicFactory {
     /* ========== VIEWS ========== */
 
     /**
-    * @dev Returns the address of the pool's PoolManagerLogic contract.
+    * @notice Returns the address of the pool's PoolManagerLogic contract.
     * @param _poolAddress address of the pool.
     * @return address Address of the pool's PoolManagerLogic contract.
     */
     function getPoolManagerLogic(address _poolAddress) external view override returns (address) {
-        require(_poolAddress != address(0), "PoolManagerLogicFactory: invalid pool address.");
-
         return poolManagerLogics[_poolAddress];
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-    * @dev Creates a PoolManagerLogic contract.
-    * @notice This function is meant to be called by PoolFactory or CappedPoolFactory.
-    * @notice Check _performanceFee in the calling contract.
-    * @param _poolAddress address of the pool.
-    * @param _manager address of the pool's manager.
-    * @param _performanceFee the pool's performance fee.
+    * @notice Creates a PoolManagerLogic contract.
+    * @dev This function can only be called by the Registry contract.
+    * @dev Check _performanceFee in the calling contract.
+    * @param _poolAddress Address of the pool.
+    * @param _manager Address of the pool's manager.
+    * @param _performanceFee The pool's performance fee.
     * @return address The address of the newly created contract.
     */
-    function createPoolManagerLogic(address _poolAddress, address _manager, uint _performanceFee) external override onlyWhitelistedContracts returns (address) {
-        require(_poolAddress != address(0), "PoolManagerLogicFactory: invalid pool address.");
-        require(_manager != address(0), "PoolManagerLogicFactory: invalid manager address.");
+    function createPoolManagerLogic(address _poolAddress, address _manager, uint256 _performanceFee) external override onlyRegistry returns (address) {
         require(poolManagerLogics[_poolAddress] == address(0), "PoolManagerLogicFactory: pool already has a PoolManagerLogic contract.");
 
+        // Create the PoolManagerLogic contract.
         address poolManagerLogicAddress = address(new PoolManagerLogic(_manager, _performanceFee, address(ADDRESS_RESOLVER)));
 
         poolManagerLogics[_poolAddress] = poolManagerLogicAddress;
 
-        emit CreatedPoolManagerLogic(_poolAddress, poolManagerLogicAddress);
+        emit CreatedPoolManagerLogic(_poolAddress, poolManagerLogicAddress, _manager, _performanceFee);
 
         return poolManagerLogicAddress;
     }
 
     /* ========== MODIFIERS ========== */
 
-    modifier onlyWhitelistedContracts() {
-        require(msg.sender == ADDRESS_RESOLVER.getContractAddress("PoolFactory") || msg.sender == ADDRESS_RESOLVER.getContractAddress("CappedPoolFactory"), "PoolManagerLogicFactory: only whitelisted contracts can call this function.");
+    modifier onlyRegistry() {
+        require(msg.sender == ADDRESS_RESOLVER.getContractAddress("Registry"), "PoolManagerLogicFactory: Only the Registry contract can call this function.");
         _;
     }
 
     /* ========== EVENTS ========== */
 
-    event CreatedPoolManagerLogic(address indexed poolAddress, address poolManagerLogicAddress);
+    event CreatedPoolManagerLogic(address poolAddress, address poolManagerLogicAddress, address manager, uint256 performanceFee);
 }

@@ -13,6 +13,7 @@ import './interfaces/IAddressResolver.sol';
 contract UbeswapPathManager is IUbeswapPathManager, Ownable {
     IAddressResolver public ADDRESS_RESOLVER;
 
+    // ('from' token => 'to' token => optimal path on Ubeswap).
     mapping (address => mapping(address => address[])) public optimalPaths;
 
     constructor(address _addressResolver) Ownable() {
@@ -59,7 +60,6 @@ contract UbeswapPathManager is IUbeswapPathManager, Ownable {
     /* ========== MODIFIERS ========== */
 
     modifier assetIsValid(address _assetToCheck) {
-        require(_assetToCheck != address(0), "UbeswapPathManager: Asset cannot have zero address.");
         require(IAssetHandler(ADDRESS_RESOLVER.getContractAddress("AssetHandler")).isValidAsset(_assetToCheck), "UbeswapPathManager: Asset not supported.");
         _;
     }

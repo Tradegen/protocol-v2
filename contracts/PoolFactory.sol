@@ -2,97 +2,50 @@
 
 pragma solidity ^0.8.3;
 
-//Interfaces
+// Interfaces.
 import './interfaces/ISettings.sol';
 import './interfaces/IAddressResolver.sol';
 import './interfaces/IPoolManagerLogicFactory.sol';
 
-//Internal references
+// Internal references.
 import './Pool.sol';
 
 contract PoolFactory {
     IAddressResolver public immutable ADDRESS_RESOLVER;
 
-    address[] public pools;
-    mapping (address => uint[]) public userToManagedPools;
-    mapping (address => uint) public addressToIndex; // maps to (index + 1); index 0 represents pool not found
-
     constructor(address _addressResolver) {
         ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
-    }
-
-    /* ========== VIEWS ========== */
-
-    /**
-    * @dev Returns the address of each pool the user manages
-    * @param user Address of the user
-    * @return address[] The address of each pool the user manages
-    */
-    function getUserManagedPools(address user) external view returns(address[] memory) {
-        require(user != address(0), "PoolFactory: Invalid address");
-
-        address[] memory addresses = new address[](userToManagedPools[user].length);
-        uint[] memory indexes = userToManagedPools[user];
-
-        for (uint i = 0; i < addresses.length; i++)
-        {
-            uint index = indexes[i];
-            addresses[i] = pools[index];
-        }
-
-        return addresses;
-    }
-
-    /**
-    * @dev Returns the address of each available pool
-    * @return address[] The address of each available pool
-    */
-    function getAvailablePools() external view returns(address[] memory) {
-        return pools;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-    * @dev Creates a new pool
-    * @param _poolName Name of the pool
-    * @param _performanceFee Performance fee for the pool
+    * @notice Creates a new Pool contract.
+    * @param _poolName Name of the pool.
+    * @param _performanceFee Performance fee for the pool.
+    * @return address The address of the deployed Pool contract.
     */
-    function createPool(string memory _poolName, uint _performanceFee) external {
+    function createPool(string memory _poolName, uint256 _performanceFee) external override onlyRegistry returns (address) {
         address settingsAddress = ADDRESS_RESOLVER.getContractAddress("Settings");
         address poolManagerLogicFactoryAddress = ADDRESS_RESOLVER.getContractAddress("PoolManagerLogicFactory");
-        uint maximumPerformanceFee = ISettings(settingsAddress).getParameterValue("MaximumPerformanceFee");
-        uint maximumNumberOfPoolsPerUser = ISettings(settingsAddress).getParameterValue("MaximumNumberOfPoolsPerUser");
 
-        require(bytes(_poolName).length < 50, "PoolFactory: Pool name must have less than 50 characters");
-        require(_performanceFee <= maximumPerformanceFee, "PoolFactory: Cannot exceed maximum performance fee");
+        require(bytes(_poolName).length < 50, "PoolFactory: Pool name must have less than 50 characters.");
+        require(_performanceFee <= ISettings(settingsAddress).getParameterValue("MaximumPerformanceFee"), "PoolFactory: Cannot exceed maximum performance fee.");
         require(_performanceFee >= 0, "PoolFactory: Performance fee must be positive.");
-        require(userToManagedPools[msg.sender].length < maximumNumberOfPoolsPerUser, "PoolFactory: Cannot exceed maximum number of pools per user");
 
-        //Create pool
-        Pool temp = new Pool(_poolName, msg.sender, address(ADDRESS_RESOLVER));
-        address poolManagerLogicAddress = IPoolManagerLogicFactory(poolManagerLogicFactoryAddress).createPoolManagerLogic(address(temp), msg.sender, _performanceFee);
-        temp.setPoolManagerLogic(poolManagerLogicAddress);
+        // Create Pool contract.
+        address poolAddress = address(new Pool(_poolName, msg.sender, address(ADDRESS_RESOLVER)));
 
-        //Update state variables
-        address poolAddress = address(temp);
-        pools.push(poolAddress);
-        userToManagedPools[msg.sender].push(pools.length - 1);
-        addressToIndex[poolAddress] = pools.length;
         ADDRESS_RESOLVER.addPoolAddress(poolAddress);
 
-        emit CreatedPool(msg.sender, poolAddress, pools.length - 1, _poolName, _performanceFee);
+        return poolAddress;
     }
 
     /* ========== MODIFIERS ========== */
 
-    modifier isValidPoolAddress(address poolAddress) {
-        require(poolAddress != address(0), "PoolFactory: Invalid pool address");
-        require(addressToIndex[poolAddress] > 0, "PoolFactory: Pool not found");
+    modifier onlyRegistry() {
+        require(msg.sender == addressResolver.getContractAddress("Registry"),
+                "PoolFactory: Only the Registry contract can call this function.");
         _;
     }
-
-    /* ========== EVENTS ========== */
-
-    event CreatedPool(address indexed managerAddress, address indexed poolAddress, uint poolIndex, string poolName, uint performanceFee);
 }
