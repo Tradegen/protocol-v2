@@ -4,7 +4,6 @@ pragma solidity ^0.8.3;
 pragma experimental ABIEncoderV2;
 
 // Libraries.
-import "../../libraries/TxDataUtils.sol";
 import "../../openzeppelin-solidity/contracts/SafeMath.sol";
 import "../../openzeppelin-solidity/contracts/Ownable.sol";
 

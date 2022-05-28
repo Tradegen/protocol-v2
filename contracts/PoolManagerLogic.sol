@@ -58,26 +58,26 @@ contract PoolManagerLogic is IPoolManagerLogic {
     * @notice Returns a list of assets that can be deposited into the pool.
     */
     function getDepositAssets() external view override returns (address[] memory) {
-        uint256[] memory assets = new uint256[](depositAssets.length);
+        address[] memory ret = new address[](depositAssets.length);
 
-        for (uint256 i = 0; i < assets.length; i++) {
-            assets[i] = depositAssets[i];
+        for (uint256 i = 0; i < ret.length; i++) {
+            ret[i] = depositAssets[i];
         }
 
-        return assets;
+        return ret;
     }
 
     /**
     * @notice Returns a list of assets that the pool can hold.
     */
     function getAvailableAssets() external view override returns (address[] memory) {
-        uint256[] memory assets = new uint256[](availableAssets.length);
+        address[] memory ret = new address[](availableAssets.length);
 
-        for (uint256 i = 0; i < assets.length; i++) {
-            assets[i] = availableAssets[i];
+        for (uint256 i = 0; i < ret.length; i++) {
+            ret[i] = availableAssets[i];
         }
 
-        return assets;
+        return ret;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */

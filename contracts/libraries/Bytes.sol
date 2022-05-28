@@ -10,7 +10,7 @@ library Bytes {
   * @param _length Number of bytes to slice.
   * @return bytes The sliced bytes.
   */
-  function slice(bytes memory _bytes, uint256 _start, uint256 _length) internal pure returns (bytes memory) {
+  function slice(bytes memory _bytes, uint256 _start, uint256 _length) public pure returns (bytes memory) {
     require(_length + 31 >= _length, "Bytes: Overflow.");
     require(_start + _length >= _start, "Bytes: Overflow.");
     require(_bytes.length >= _start + _length, "Bytes: Slice out of bounds.");
@@ -125,7 +125,7 @@ library Bytes {
   * @return bytes The bytes data converted to function parameters.
   */
   function getParams(bytes calldata _data) external pure returns (bytes memory) {
-    return _data.slice(4, _data.length - 4);
+    return slice(_data, 4, _data.length - 4);
   }
 
   /**
@@ -156,7 +156,7 @@ library Bytes {
     uint256 bytesLenPos = uint256(read32(_data, 32 * _inputNum + 4 + _offset, 32));
     uint256 bytesLen = uint256(read32(_data, bytesLenPos + 4 + _offset, 32));
 
-    return _data.slice(bytesLenPos + 4 + _offset + 32, bytesLen);
+    return slice(_data, bytesLenPos + 4 + _offset + 32, bytesLen);
   }
 
   /**
@@ -198,7 +198,7 @@ library Bytes {
     bytes32 arrayLen = read32(_data, uint256(arrayPos) + 4, 32);
 
     require(arrayLen > 0, "Bytes: Input is not array.");
-    require(uint256(arrayLen) > arrayIndex, "Bytes: Invalid array position.");
+    require(uint256(arrayLen) > _arrayIndex, "Bytes: Invalid array position.");
 
     return read32(_data, uint256(arrayPos) + 4 + ((1 + uint256(_arrayIndex)) * 32), 32);
   }
@@ -207,7 +207,7 @@ library Bytes {
   * @notice Reads 4 bytes, starting at the offset.
   * @param _data Bytes data to read from.
   * @param _offset The byte to start reading from.
-  * @return bytes4 Parsed bytes data.
+  * @return o Parsed bytes4 data.
   */
   function read4left(bytes memory _data, uint256 _offset) public pure returns (bytes4 o) {
     require(_data.length >= _offset + 4, "Bytes: Reading bytes out of bounds.");
@@ -222,7 +222,7 @@ library Bytes {
   * @param _data Bytes data to read from.
   * @param _offset Byte to start from.
   * @param _length Number of bytes to read.
-  * @return bytes32 Parsed bytes converted to bytes32.
+  * @return o Parsed bytes converted to bytes32.
   */
   function read32(bytes memory _data, uint256 _offset, uint256 _length) public pure returns (bytes32 o) {
     require(_data.length >= _offset + _length, "Bytes: Reading bytes out of bounds.");
@@ -247,7 +247,7 @@ library Bytes {
   * @notice Slices a uint from the given bytes data, starting from [_start] byte.
   * @param _data Bytes data to read from.
   * @param _start The byte to start from.
-  * @return uint256 Parsed bytes converted to uint.
+  * @return x Parsed bytes converted to uint256.
   */
   function sliceUint(bytes memory _data, uint256 _start) internal pure returns (uint256 x) {
     require(_data.length >= _start + 32, "Bytes: Slicing out of range.");

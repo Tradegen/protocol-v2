@@ -16,7 +16,7 @@ import "../../interfaces/IAddressResolver.sol";
 import "../../interfaces/IAssetHandler.sol";
 import "../../interfaces/IERC20.sol";
 
-contract ERC20Verifier is Bytes, IVerifier, IAssetVerifier {
+contract ERC20Verifier is IVerifier, IAssetVerifier {
     using SafeMath for uint256;
 
     IAddressResolver public immutable ADDRESS_RESOLVER;
@@ -34,12 +34,12 @@ contract ERC20Verifier is Bytes, IVerifier, IAssetVerifier {
     * @return (bool, address, uint256) Whether the transaction is valid, the received asset, and the transaction type.
     */
     function verify(address _pool, address, bytes calldata _data) external virtual override returns (bool, address, uint256) {
-        bytes4 method = getMethod(_data);
+        bytes4 method = Bytes.getMethod(_data);
 
         if (method == bytes4(keccak256("approve(address,uint256)")))
         {
-            address spender = convert32toAddress(getInput(_data, 0));
-            uint256 amount = uint256(getInput(_data, 1));
+            address spender = Bytes.convert32toAddress(Bytes.getInput(_data, 0));
+            uint256 amount = uint256(Bytes.getInput(_data, 1));
 
             // Only check for contract verifier, since an asset probably won't call transferFrom() on another asset.
             address verifier = ADDRESS_RESOLVER.contractVerifiers(spender);

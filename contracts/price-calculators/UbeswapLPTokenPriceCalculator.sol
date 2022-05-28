@@ -44,7 +44,7 @@ contract UbeswapLPTokenPriceCalculator is IPriceCalculator {
         address token1 = IUniswapV2Pair(_pair).token1();
         
         {
-        (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(pair).getReserves();
+        (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(_pair).getReserves();
 
         reserve0 = uint256(reserve0).mul(10**18).div(10**uint256(IERC20(token0).decimals()));
         reserve1 = uint256(reserve1).mul(10**18).div(10**uint256(IERC20(token1).decimals()));

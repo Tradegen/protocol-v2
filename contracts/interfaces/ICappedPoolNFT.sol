@@ -4,6 +4,11 @@ pragma solidity ^0.8.3;
 
 interface ICappedPoolNFT {
     /**
+    * @notice Returns the user's cost basis.
+    */
+    function userDeposits(address _user) external view returns (uint256);
+
+    /**
     * @notice Returns the total cost basis of the pool.
     */
     function totalDeposits() external view returns (uint256);

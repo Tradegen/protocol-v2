@@ -68,12 +68,12 @@ contract AssetHandler is IAssetHandler, Ownable {
     function getAvailableAssetsForType(uint256 _assetType) external view override returns (address[] memory) {
         require(_assetType > 0, "AssetHandler: assetType must be greater than 0.");
 
-        uint256 numberOfAssets = numberOfAvailableAssetsForType[assetType];
+        uint256 numberOfAssets = numberOfAvailableAssetsForType[_assetType];
         address[] memory assets = new address[](numberOfAssets);
 
         for (uint256 i = 0; i < numberOfAssets; i++)
         {
-            assets[i] = availableAssetsForType[assetType][i];
+            assets[i] = availableAssetsForType[_assetType][i];
         }
 
         return assets;

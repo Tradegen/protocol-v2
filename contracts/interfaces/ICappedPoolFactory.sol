@@ -12,7 +12,6 @@ interface ICappedPoolFactory {
     * @param _poolName Name of the pool.
     * @param _maxSupply Maximum number of pool tokens.
     * @param _seedPrice Initial price of pool tokens.
-    * @param _performanceFee Performance fee for the pool.
     */
-    function createCappedPool(address _manager, string memory _poolName, uint256 _maxSupply, uint256 _seedPrice, uint256 _performanceFee) external returns (address);
+    function createCappedPool(address _manager, string memory _poolName, uint256 _maxSupply, uint256 _seedPrice) external returns (address);
 }

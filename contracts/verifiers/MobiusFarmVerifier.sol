@@ -3,7 +3,7 @@
 pragma solidity ^0.8.3;
 
 // Libraries.
-import "../libraries/TxDataUtils.sol";
+import "../libraries/Bytes.sol";
 
 // Inheritance.
 import "../interfaces/IVerifier.sol";
@@ -13,7 +13,7 @@ import "../interfaces/IAddressResolver.sol";
 import "../interfaces/IAssetHandler.sol";
 import "../interfaces/IMobiusLPVerifier.sol";
 
-contract MobiusFarmVerifier is TxDataUtils, IVerifier {
+contract MobiusFarmVerifier is IVerifier {
     IAddressResolver public immutable ADDRESS_RESOLVER;
 
     constructor(address _addressResolver) {
@@ -28,7 +28,7 @@ contract MobiusFarmVerifier is TxDataUtils, IVerifier {
     * @return (bool, address, uint256) Whether the transaction is valid, the received asset, and the transaction type.
     */
     function verify(address _pool, address _to, bytes calldata _data) external override returns (bool, address, uint256) {
-        bytes4 method = getMethod(_data);
+        bytes4 method = Bytes.getMethod(_data);
 
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
         address mobiusLPVerifierAddress = ADDRESS_RESOLVER.assetVerifiers(3);
@@ -43,7 +43,7 @@ contract MobiusFarmVerifier is TxDataUtils, IVerifier {
         if (method == bytes4(keccak256("deposit(uint256,uint256)")))
         {
             // Parse transaction data.
-            uint256 numberOfLPTokens = uint256(getInput(_data, 0));
+            uint256 numberOfLPTokens = uint256(Bytes.getInput(_data, 0));
 
             emit Staked(_pool, _to, numberOfLPTokens);
 
@@ -52,9 +52,9 @@ contract MobiusFarmVerifier is TxDataUtils, IVerifier {
         else if (method == bytes4(keccak256("withdraw(uint256,uint256)")))
         {
             // Parse transaction data.
-            uint256 numberOfLPTokens = uint256(getInput(_data, 0));
+            uint256 numberOfLPTokens = uint256(Bytes.getInput(_data, 0));
 
-            emit Unstaked(pool, _to, numberOfLPTokens);
+            emit Unstaked(_pool, _to, numberOfLPTokens);
 
             return (true, _to, 4);
         }
@@ -64,6 +64,6 @@ contract MobiusFarmVerifier is TxDataUtils, IVerifier {
 
     /* ========== EVENTS ========== */
 
-    event Staked(address indexed pool, address indexed stakingToken, uint256 numberOfLPTokens);
-    event Unstaked(address indexed pool, address indexed stakingToken, uint256 numberOfLPTokens);
+    event Staked(address pool, address stakingToken, uint256 numberOfLPTokens);
+    event Unstaked(address pool, address stakingToken, uint256 numberOfLPTokens);
 }

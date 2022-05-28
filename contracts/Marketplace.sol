@@ -159,7 +159,7 @@ contract Marketplace is IMarketplace, ERC1155Holder {
 
         // Transfer tokens to seller.
         IERC1155(ICappedPool(_poolAddress).getNFTAddress()).setApprovalForAll(msg.sender, true);
-        IERC1155(ICappedPool(_poolAddress).getNFTAddress()).safeTransferFrom(address(this), msg.sender, marketplaceListings[_index].tokenClass, _numberOfTokens, "");
+        IERC1155(ICappedPool(_poolAddress).getNFTAddress()).safeTransferFrom(address(this), msg.sender, marketplaceListings[_index].tokenClass, numberOfTokens, "");
 
         emit RemovedListing(msg.sender, _poolAddress, _index);
     }
@@ -184,20 +184,20 @@ contract Marketplace is IMarketplace, ERC1155Holder {
     * @param _index Index of the marketplace listing.
     * @param _newQuantity Number of tokens to sell.
     */
-    function updateQuantity(address _poolAddress, uint256 _index, uint256 _newQuantity) external override isValidPool_(poolAddress) indexInRange(_index) onlySeller(_poolAddress, _index) {
+    function updateQuantity(address _poolAddress, uint256 _index, uint256 _newQuantity) external override isValidPool(_poolAddress) indexInRange(_index) onlySeller(_poolAddress, _index) {
         require(_newQuantity > 0 &&
                 _newQuantity <= IERC1155(ICappedPool(_poolAddress).getNFTAddress()).balanceOf(msg.sender, marketplaceListings[_index].tokenClass),
                 "Marketplace: Quantity out of bounds.");
 
-        uint256 oldQuantity = marketplaceListings[index].numberOfTokens;
+        uint256 oldQuantity = marketplaceListings[_index].numberOfTokens;
 
-        marketplaceListings[index].numberOfTokens = newQuantity;
+        marketplaceListings[_index].numberOfTokens = _newQuantity;
 
         if (_newQuantity > oldQuantity) {
             // Transfer tokens to marketplace.
             IERC1155(ICappedPool(_poolAddress).getNFTAddress()).safeTransferFrom(msg.sender, address(this), marketplaceListings[_index].tokenClass, _newQuantity.sub(oldQuantity), "");
         }
-        else if (oldQuantity < newQuantity) {
+        else if (oldQuantity < _newQuantity) {
             //Transfer tokens to seller.
             IERC1155(ICappedPool(_poolAddress).getNFTAddress()).setApprovalForAll(msg.sender, true);
             IERC1155(ICappedPool(_poolAddress).getNFTAddress()).safeTransferFrom(address(this), msg.sender, marketplaceListings[_index].tokenClass, oldQuantity.sub(_newQuantity), "");

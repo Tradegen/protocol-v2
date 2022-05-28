@@ -15,19 +15,9 @@ interface IPool {
     function getPositionsAndTotal() external view returns (address[] memory, uint256[] memory, uint256);
 
     /**
-    * @notice Returns the amount of stablecoins the pool has to invest.
-    */
-    function getAvailableFunds() external view returns (uint256);
-
-    /**
     * @dev Returns the value of the pool in USD.
     */
     function getPoolValue() external view returns (uint256);
-
-    /**
-    * @dev Returns the balance of the user in USD.
-    */
-    function getUSDBalance(address user) external view returns (uint256);
 
     /**
     * @notice Deposits the given depositAsset amount into the pool.
@@ -42,11 +32,6 @@ interface IPool {
     * @param _numberOfPoolTokens Number of pool tokens to withdraw.
     */
     function withdraw(uint256 _numberOfPoolTokens) external;
-
-    /**
-    * @notice Withdraws the user's full investment.
-    */
-    function exit() external;
 
     /**
     * @notice Returns the USD value of the asset.

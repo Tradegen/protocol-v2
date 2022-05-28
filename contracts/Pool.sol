@@ -23,8 +23,8 @@ contract Pool is IPool, ERC20 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IAddressResolver public immutable ADDRESS_RESOLVER;
-    IPoolManagerLogic public POOL_MANAGER_LOGIC;
+    IAddressResolver immutable ADDRESS_RESOLVER;
+    IPoolManagerLogic POOL_MANAGER_LOGIC;
    
     address public override manager;
     uint256 public collectedManagerFees;
@@ -79,16 +79,6 @@ contract Pool is IPool, ERC20 {
     }
 
     /**
-    * @notice Returns the amount of stablecoin the pool has to invest.
-    */
-    function getAvailableFunds() public view override returns (uint256) {
-        address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
-        address stableCoinAddress = IAssetHandler(assetHandlerAddress).getStableCoinAddress();
-
-        return IERC20(stableCoinAddress).balanceOf(address(this));
-    }
-
-    /**
     * @notice Returns the value of the pool in USD.
     */
     function getPoolValue() public view override returns (uint256) {
@@ -102,13 +92,6 @@ contract Pool is IPool, ERC20 {
         }
         
         return sum;
-    }
-
-    /**
-    * @notice Returns the balance of the user in USD.
-    */
-    function getUSDBalance(address _user) public view override returns (uint256) {
-        return (totalSupply == 0) ? 0 : getPoolValue().mul(balanceOf(_user)).div(totalSupply());
     }
 
     /**
@@ -169,7 +152,7 @@ contract Pool is IPool, ERC20 {
         userDeposits[msg.sender] = userDeposits[msg.sender].sub(userDeposits[msg.sender].mul(_numberOfPoolTokens).div(balanceOf(msg.sender)));
 
         // Burn the user's pool tokens.
-        _burn(msg.sender, numberOfPoolTokens);
+        _burn(msg.sender, _numberOfPoolTokens);
 
         uint256[] memory amountsWithdrawn = new uint256[](addresses.length);
 
@@ -185,14 +168,7 @@ contract Pool is IPool, ERC20 {
             }
         }
 
-        emit Withdraw(msg.sender, numberOfPoolTokens, valueWithdrawn, addresses, amountsWithdrawn);
-    }
-
-    /**
-    * @notice Withdraws the user's full investment.
-    */
-    function exit() external override {
-        withdraw(balanceOf(msg.sender));
+        emit Withdraw(msg.sender, _numberOfPoolTokens, valueWithdrawn, addresses, amountsWithdrawn);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -244,10 +220,6 @@ contract Pool is IPool, ERC20 {
         require(success, "Pool: Transaction failed to execute.");
         }
 
-        // Update the pool's weight in the farming system.
-        uint256 poolValue = getPoolValue();
-        POOL_MANAGER.updateWeight(poolValue > totalDeposits ? poolValue.sub(totalDeposits) : 0, _tokenPrice(poolValue));
-
         emit ExecutedTransaction(manager, _to, transactionType);
     }
 
@@ -259,7 +231,7 @@ contract Pool is IPool, ERC20 {
     * @return uint256 Price of a pool token.
     */
     function _tokenPrice(uint256 _poolValue) internal view returns (uint256) {
-        return (_poolValue == 0) ? seedPrice : _poolValue.div(totalSupply());
+        return (_poolValue == 0) ? 1e18 : _poolValue.div(totalSupply());
     }
 
     /**

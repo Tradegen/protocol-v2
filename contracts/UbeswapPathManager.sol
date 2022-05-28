@@ -48,13 +48,13 @@ contract UbeswapPathManager is IUbeswapPathManager, Ownable {
     * @param _newPath The pre-determined optimal path between the two assets.
     */
     function setPath(address _fromAsset, address _toAsset, address[] memory _newPath) external override onlyOwner assetIsValid(_fromAsset) assetIsValid(_toAsset) {
-        require(newPath.length >= 2, "UbeswapPathManager: Path length must be at least 2.");
-        require(newPath[0] == _fromAsset, "UbeswapPathManager: First asset in path must be _fromAsset.");
-        require(newPath[newPath.length - 1] == _toAsset, "UbeswapPathManager: Last asset in path must be _toAsset.");
+        require(_newPath.length >= 2, "UbeswapPathManager: Path length must be at least 2.");
+        require(_newPath[0] == _fromAsset, "UbeswapPathManager: First asset in path must be _fromAsset.");
+        require(_newPath[_newPath.length - 1] == _toAsset, "UbeswapPathManager: Last asset in path must be _toAsset.");
 
-        optimalPaths[_fromAsset][_toAsset] = newPath;
+        optimalPaths[_fromAsset][_toAsset] = _newPath;
 
-        emit SetPath(_fromAsset, _toAsset, newPath);
+        emit SetPath(_fromAsset, _toAsset, _newPath);
     }
 
     /* ========== MODIFIERS ========== */

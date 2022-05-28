@@ -49,15 +49,15 @@ contract UbeswapAdapter is IUbeswapAdapter {
         // If so, return $1 as the price.
         if (_currencyKey == stableCoinAddress)
         {
-            return 10 ** _getDecimals(currencyKey);
+            return 10 ** _getDecimals(_currencyKey);
         }
 
         require(IAssetHandler(assetHandlerAddress).isValidAsset(_currencyKey), "UbeswapAdapter: Currency is not available.");
 
         address ubeswapPathManagerAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapPathManager");
-        address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(currencyKey, stableCoinAddress);
+        address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(_currencyKey, stableCoinAddress);
         // 1 token -> USD.
-        uint256[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsOut(10 ** _getDecimals(currencyKey), path);
+        uint256[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsOut(10 ** _getDecimals(_currencyKey), path);
 
         return amounts[amounts.length - 1];
     }

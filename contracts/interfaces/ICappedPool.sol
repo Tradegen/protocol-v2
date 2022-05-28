@@ -3,6 +3,14 @@
 pragma solidity >=0.7.6;
 
 interface ICappedPool {
+    struct WithdrawVars {
+        uint256 poolValue;
+        uint256 totalDeposits;
+        uint256 userValue;
+        uint256 valueWithdrawn;
+        uint256 unrealizedProfits;
+    }
+
     /**
     * @notice Returns the address of the pool's CappedPoolNFT contract.
     */
@@ -20,19 +28,9 @@ interface ICappedPool {
     function getPositionsAndTotal() external view returns (address[] memory, uint256[] memory, uint256);
 
     /**
-    * @notice Returns the amount of stablecoin the pool has to invest.
-    */
-    function getAvailableFunds() external view returns (uint256);
-
-    /**
     * @notice Returns the value of the pool in USD.
     */
     function getPoolValue() external view returns (uint256);
-
-    /**
-    * @notice Returns the balance of the user in USD.
-    */
-    function getUSDBalance(address _user) external view returns (uint256);
 
     /**
     * @notice Purchases the given amount of pool tokens.
@@ -50,11 +48,6 @@ interface ICappedPool {
     function withdraw(uint256 _numberOfPoolTokens, uint256 _tokenClass) external;
 
     /**
-    * @notice Withdraws the user's full investment.
-    */
-    function exit() external;
-
-    /**
     * @notice Returns the pool's USD value of the asset.
     * @param _asset Address of the asset.
     * @param _assetHandlerAddress Address of AssetHandler contract.
@@ -66,19 +59,6 @@ interface ICappedPool {
     * @notice Returns the mint price of the pool's token.
     */
     function tokenPrice() external view returns (uint256);
-
-    /**
-    * @notice Returns the number of tokens available for each class.
-    * @return (uint256, uint256, uint256, uint256) Number of available C1, C2, C3, and C4 tokens.
-    */
-    function getAvailableTokensPerClass() external view returns (uint256, uint256, uint256, uint256);
-
-    /**
-    * @notice Given the address of a user, returns the number of tokens the user has for each class.
-    * @param _user Address of the user.
-    * @return (uint256, uint256, uint256, uint256) Number of available C1, C2, C3, and C4 tokens.
-    */
-    function getTokenBalancePerClass(address user) external view returns (uint256, uint256, uint256, uint256);
 
     /**
     * @notice Initializes the CappedPoolNFT and PoolManagerLogic contracts.

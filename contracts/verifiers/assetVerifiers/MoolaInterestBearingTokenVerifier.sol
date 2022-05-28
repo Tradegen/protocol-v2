@@ -4,7 +4,6 @@ pragma solidity ^0.8.3;
 pragma experimental ABIEncoderV2;
 
 // Libraries.
-import "../../libraries/TxDataUtils.sol";
 import "../../openzeppelin-solidity/contracts/SafeMath.sol";
 
 // Inheritance.
@@ -28,12 +27,12 @@ contract MoolaInterestBearingTokenVerifier is ERC20Verifier {
     * @return (bool, address, uint) Whether the transaction is valid, the received asset, and the transaction type.
     */
     function verify(address _pool, address _to, bytes calldata _data) external virtual override returns (bool, address, uint256) {
-        bytes4 method = getMethod(_data);
+        bytes4 method = Bytes.getMethod(_data);
 
         if (method == bytes4(keccak256("approve(address,uint256)")))
         {
-            address spender = convert32toAddress(getInput(_data, 0));
-            uint256 amount = uint256(getInput(_data, 1));
+            address spender = Bytes.convert32toAddress(Bytes.getInput(_data, 0));
+            uint256 amount = uint256(Bytes.getInput(_data, 1));
 
             // Only check for contract verifier, since an asset probably won't call transferFrom() on another asset.
             address verifier = ADDRESS_RESOLVER.contractVerifiers(spender);
@@ -47,7 +46,7 @@ contract MoolaInterestBearingTokenVerifier is ERC20Verifier {
         }
         else if (method == bytes4(keccak256("redeem(uint256)")))
         {
-            uint256 amount = uint256(getInput(_data, 0));
+            uint256 amount = uint256(Bytes.getInput(_data, 0));
 
             address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
             address moolaAdapterAddress = ADDRESS_RESOLVER.getContractAddress("MoolaAdapter");
@@ -65,5 +64,5 @@ contract MoolaInterestBearingTokenVerifier is ERC20Verifier {
 
     /* ========== EVENTS ========== */
 
-    event Redeem(address indexed pool, address indexed interestBearingToken, uint256 amount);
+    event Redeem(address pool, address interestBearingToken, uint256 amount);
 }

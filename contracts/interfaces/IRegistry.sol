@@ -4,6 +4,33 @@ pragma solidity ^0.8.3;
 
 interface IRegistry {
 
+    /* ========== VIEWS ========== */
+
+    /**
+    * @notice Returns the number of tokens available for each class.
+    * @param _cappedPool Address of the CappedPool contract.
+    * @return (uint256, uint256, uint256, uint256) Number of available C1, C2, C3, and C4 tokens.
+    */
+    function getAvailableTokensPerClass(address _cappedPool) external view returns (uint256, uint256, uint256, uint256);
+
+    /**
+    * @notice Given the address of a user, returns the number of tokens the user has for each class.
+    * @param _cappedPool Address of the CappedPool contract.
+    * @param _user Address of the user.
+    * @return (uint256, uint256, uint256, uint256) Number of available C1, C2, C3, and C4 tokens.
+    */
+    function getTokenBalancePerClass(address _cappedPool, address _user) external view returns (uint256, uint256, uint256, uint256);
+
+    /**
+    * @notice Returns the amount of stablecoin the pool, or capped pool, has to invest.
+    */
+    function getAvailableFunds(address _pool) external view returns (uint256);
+
+    /**
+    * @notice Returns the balance of the user in USD.
+    */
+    function getUSDBalance(address _user, address _pool, bool _isCappedPool) external view returns (uint256);
+
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**

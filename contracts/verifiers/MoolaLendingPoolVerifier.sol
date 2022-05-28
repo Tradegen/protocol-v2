@@ -3,7 +3,7 @@
 pragma solidity ^0.8.3;
 
 // Libraries.
-import "../libraries/TxDataUtils.sol";
+import "../libraries/Bytes.sol";
 
 // Inheritance.
 import "../interfaces/IVerifier.sol";
@@ -13,7 +13,7 @@ import "../interfaces/IAddressResolver.sol";
 import "../interfaces/IAssetHandler.sol";
 import "../interfaces/IMoolaAdapter.sol";
 
-contract MoolaLendingPoolVerifier is TxDataUtils, IVerifier {
+contract MoolaLendingPoolVerifier is IVerifier {
     IAddressResolver public immutable ADDRESS_RESOLVER;
 
     constructor(address _addressResolver) {
@@ -28,7 +28,7 @@ contract MoolaLendingPoolVerifier is TxDataUtils, IVerifier {
     * @return (bool, address, uint256) Whether the transaction is valid, the received asset, and the transaction type.
     */
     function verify(address _pool, address _to, bytes calldata _data) external override returns (bool, address, uint256) {
-        bytes4 method = getMethod(_data);
+        bytes4 method = Bytes.getMethod(_data);
 
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
         address moolaAdapterAddress = ADDRESS_RESOLVER.getContractAddress("MoolaAdapter");
@@ -43,8 +43,8 @@ contract MoolaLendingPoolVerifier is TxDataUtils, IVerifier {
         if (method == bytes4(keccak256("deposit(address,uint256,uint16)")))
         {
             // Parse transaction data.
-            address reserveAsset = convert32toAddress(getInput(_data, 0));
-            uint256 amount = uint256(getInput(_data, 1));
+            address reserveAsset = Bytes.convert32toAddress(Bytes.getInput(_data, 0));
+            uint256 amount = uint256(Bytes.getInput(_data, 1));
 
             require(reserveAsset == underlyingAsset, "MoolaLendingPoolVerifier: Reserve asset is not the underlying asset.");
 
@@ -55,8 +55,8 @@ contract MoolaLendingPoolVerifier is TxDataUtils, IVerifier {
         else if (method == bytes4(keccak256("borrow(address,uint256,uint256,uint16)")))
         {
             // Parse transaction data.
-            address reserveAsset = convert32toAddress(getInput(_data, 0));
-            uint256 amount = uint256(getInput(_data, 1));
+            address reserveAsset = Bytes.convert32toAddress(Bytes.getInput(_data, 0));
+            uint256 amount = uint256(Bytes.getInput(_data, 1));
 
             require(reserveAsset == underlyingAsset, "MoolaLendingPoolVerifier: Reserve asset is not the underlying asset.");
 
@@ -66,15 +66,16 @@ contract MoolaLendingPoolVerifier is TxDataUtils, IVerifier {
         }
         else if (method == bytes4(keccak256("repay(address,uint256,address)")))
         {
+            {
             // Parse transaction data.
-            address reserveAsset = convert32toAddress(getInput(_data, 0));
-            uint256 amount = uint256(getInput(_data, 1));
-            address onBehalfOf = convert32toAddress(getInput(_data, 2));
+            address reserveAsset = Bytes.convert32toAddress(Bytes.getInput(_data, 0));
+            address onBehalfOf = Bytes.convert32toAddress(Bytes.getInput(_data, 2));
 
             require(reserveAsset == underlyingAsset, "MoolaLendingPoolVerifier: Reserve asset is not the underlying asset.");
             require(onBehalfOf == _pool, "MoolaLendingPoolVerifier: Must repay on behalf of pool.");
+            }
 
-            emit Repay(_pool, _to, amount);
+            emit Repay(_pool, _to, uint256(Bytes.getInput(_data, 1)));
 
             return (true, address(0), 7);
         }
@@ -84,7 +85,7 @@ contract MoolaLendingPoolVerifier is TxDataUtils, IVerifier {
 
     /* ========== EVENTS ========== */
 
-    event Deposit(address indexed pool, address indexed lendingPool, uint256 amount);
-    event Borrow(address indexed pool, address indexed lendingPool, uint256 amount);
-    event Repay(address indexed pool, address indexed lendingPool, uint256 amount);
+    event Deposit(address pool, address lendingPool, uint256 amount);
+    event Borrow(address pool, address lendingPool, uint256 amount);
+    event Repay(address pool, address lendingPool, uint256 amount);
 }

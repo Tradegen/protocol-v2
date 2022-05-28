@@ -15,7 +15,7 @@ contract CappedPoolNFTFactory is ICappedPoolNFTFactory {
     IAddressResolver public immutable addressResolver;
 
     constructor(address _addressResolver) {
-        addressResolver = IAddressResolver(_addressResolver)
+        addressResolver = IAddressResolver(_addressResolver);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */

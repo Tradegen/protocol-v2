@@ -15,7 +15,7 @@ import "../interfaces/IAssetHandler.sol";
 import "../interfaces/IUbeswapLPVerifier.sol";
 import "../interfaces/Ubeswap/IStakingRewards.sol";
 
-contract UbeswapFarmVerifier is Bytes, IVerifier {
+contract UbeswapFarmVerifier is IVerifier {
     using SafeMath for uint256;
 
     IAddressResolver public immutable ADDRESS_RESOLVER;
@@ -32,7 +32,7 @@ contract UbeswapFarmVerifier is Bytes, IVerifier {
     * @return (bool, address, uint256) Whether the transaction is valid, the received asset, and the transaction type.
     */
     function verify(address _pool, address _to, bytes calldata _data) external override returns (bool, address, uint256) {
-        bytes4 method = getMethod(_data);
+        bytes4 method = Bytes.getMethod(_data);
 
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
         address ubeswapLPVerifierAddress = ADDRESS_RESOLVER.assetVerifiers(2);
@@ -43,7 +43,7 @@ contract UbeswapFarmVerifier is Bytes, IVerifier {
         if (method == bytes4(keccak256("stake(uint256)")))
         {
             // Parse transaction data.
-            uint256 numberOfLPTokens = uint256(getInput(_data, 0));
+            uint256 numberOfLPTokens = uint256(Bytes.getInput(_data, 0));
 
             // Check if assets are supported.
             require(IAssetHandler(assetHandlerAddress).isValidAsset(rewardToken), "UbeswapFarmVerifier: Unsupported reward token.");
@@ -56,7 +56,7 @@ contract UbeswapFarmVerifier is Bytes, IVerifier {
         else if (method == bytes4(keccak256("withdraw(uint256)")))
         {
             // Parse transaction data.
-            uint256 numberOfLPTokens = uint256(getInput(_data, 0));
+            uint256 numberOfLPTokens = uint256(Bytes.getInput(_data, 0));
 
             // Check if assets are supported.
             require(IAssetHandler(assetHandlerAddress).isValidAsset(pair), "UbeswapFarmVerifier: Unsupported liquidity pair.");
@@ -93,7 +93,7 @@ contract UbeswapFarmVerifier is Bytes, IVerifier {
 
     /* ========== EVENTS ========== */
 
-    event Staked(address indexed pool, address indexed farm, uint256 numberOfLPTokens);
-    event Unstaked(address indexed pool, address indexed farm, uint256 numberOfLPTokens);
-    event ClaimedReward(address indexed pool, address indexed farm);
+    event Staked(address pool, address farm, uint256 numberOfLPTokens);
+    event Unstaked(address pool, address farm, uint256 numberOfLPTokens);
+    event ClaimedReward(address pool, address farm);
 }

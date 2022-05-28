@@ -26,7 +26,7 @@ contract CappedPoolNFT is ICappedPoolNFT, ERC1155 {
     // Keep track of cost basis to calculate unrealized profits.
     // Unrealized profits are used to update pool weights in the farming system.
     // (user address => user's cost basis).
-    mapping (address => uint256) public userDeposits;
+    mapping (address => uint256) public override userDeposits;
     uint256 public override totalDeposits;
 
     constructor(address _pool, uint256 _supplyCap) {
@@ -72,8 +72,8 @@ contract CappedPoolNFT is ICappedPoolNFT, ERC1155 {
     function depositByClass(address _user, uint256 _numberOfTokens, uint256 _amountOfUSD) external override onlyPool returns (uint256) {
         uint256 amount;
 
-        balance[_user] = balance[_user].add(_numberOfPoolTokens);
-        totalSupply = totalSupply.add(_numberOfPoolTokens);
+        balance[_user] = balance[_user].add(_numberOfTokens);
+        totalSupply = totalSupply.add(_numberOfTokens);
 
         // Update the cost basis.
         userDeposits[_user] = userDeposits[_user].add(_amountOfUSD);
@@ -136,8 +136,8 @@ contract CappedPoolNFT is ICappedPoolNFT, ERC1155 {
     */
     function burnTokens(address _user, uint256 _tokenClass, uint256 _numberOfTokens) external override onlyPool returns (uint256) {
         // Update the cost basis.
-        totalDeposits = totalDeposits.sub(userDeposits[_user].mul(_numberOfPoolTokens).div(balance[_user]));
-        userDeposits[_user] = userDeposits[_user].sub(userDeposits[_user].mul(_numberOfPoolTokens).div(balance[_user]));
+        totalDeposits = totalDeposits.sub(userDeposits[_user].mul(_numberOfTokens).div(balance[_user]));
+        userDeposits[_user] = userDeposits[_user].sub(userDeposits[_user].mul(_numberOfTokens).div(balance[_user]));
 
         balance[_user] = balance[_user].sub(_numberOfTokens);
         totalSupply = totalSupply.sub(_numberOfTokens);

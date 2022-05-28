@@ -19,25 +19,28 @@ import './interfaces/ICappedPool.sol';
 // Libraries.
 import './openzeppelin-solidity/contracts/SafeMath.sol';
 import './openzeppelin-solidity/contracts/ERC20/SafeERC20.sol';
+import './openzeppelin-solidity/contracts/ERC1155/IERC1155.sol';
 
 contract CappedPool is ICappedPool {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IAddressResolver public ADDRESS_RESOLVER;
-    IPoolManagerLogic public POOL_MANAGER_LOGIC;
-    IPoolManager public immutable POOL_MANAGER;
-    ICappedPoolNFT public CAPPED_POOL_NFT;
+    IAddressResolver ADDRESS_RESOLVER;
+    IPoolManagerLogic POOL_MANAGER_LOGIC;
+    IPoolManager immutable POOL_MANAGER;
+    ICappedPoolNFT CAPPED_POOL_NFT;
    
     // Pool info.
     string public name;
     address public override manager;
-    uint public maxSupply;
-    uint public seedPrice;
+    uint256 public maxSupply;
+    uint256 public seedPrice;
     uint256 public collectedManagerFees;
 
     uint256 public unrealizedProfitsAtLastSnapshot;
     uint256 public timestampAtLastSnapshot;
+
+    WithdrawVars private withdrawVars;
     
     constructor(string memory _poolName, uint256 _seedPrice, uint256 _supplyCap, address _manager, address _addressResolver, address _poolManager) {
         name = _poolName;
@@ -55,23 +58,6 @@ contract CappedPool is ICappedPool {
     */
     function getNFTAddress() external view override returns (address) {
         return address(CAPPED_POOL_NFT);
-    }
-
-    /**
-    * @notice Returns the number of tokens available for each class.
-    * @return (uint256, uint256, uint256, uint256) Number of available C1, C2, C3, and C4 tokens.
-    */
-    function getAvailableTokensPerClass() external view override returns (uint256, uint256, uint256, uint256) {
-        return CAPPED_POOL_NFT.getAvailableTokensPerClass();
-    }
-
-    /**
-    * @notice Given the address of a user, returns the number of tokens the user has for each class.
-    * @param _user Address of the user.
-    * @return (uint256, uint256, uint256, uint256) Number of available C1, C2, C3, and C4 tokens.
-    */
-    function getTokenBalancePerClass(address _user) external view override returns (uint256, uint256, uint256, uint256) {
-        return CAPPED_POOL_NFT.getTokenBalancePerClass(_user);
     }
 
     /**
@@ -112,16 +98,6 @@ contract CappedPool is ICappedPool {
     }
 
     /**
-    * @notice Returns the amount of stablecoin the pool has to invest.
-    */
-    function getAvailableFunds() public view override returns (uint256) {
-        address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
-        address stableCoinAddress = IAssetHandler(assetHandlerAddress).getStableCoinAddress();
-
-        return IERC20(stableCoinAddress).balanceOf(address(this));
-    }
-
-    /**
     * @notice Returns the value of the pool in USD.
     */
     function getPoolValue() public view override returns (uint256) {
@@ -135,13 +111,6 @@ contract CappedPool is ICappedPool {
         }
         
         return sum;
-    }
-
-    /**
-    * @notice Returns the balance of the user in USD.
-    */
-    function getUSDBalance(address _user) public view override returns (uint256) {
-        return (totalSupply == 0) ? 0 : getPoolValue().mul(CAPPED_POOL_NFT.balance(_user)).div(CAPPED_POOL_NFT.totalSupply());
     }
 
     /**
@@ -160,9 +129,9 @@ contract CappedPool is ICappedPool {
     * @param _depositAsset Address of the asset to deposit.
     */
     function deposit(uint256 _numberOfPoolTokens, address _depositAsset) public override {
-        require(POOL_MANAGER_LOGIC.isDepositAsset(_depositAsset), "CappedPool: asset is not available to deposit.");
+        require(POOL_MANAGER_LOGIC.isDepositAsset(_depositAsset), "CappedPool: Asset is not available to deposit.");
         require(_numberOfPoolTokens > 0 &&
-                totalSupply.add(_numberOfPoolTokens) <= maxSupply,
+                CAPPED_POOL_NFT.totalSupply().add(_numberOfPoolTokens) <= maxSupply,
                 "CappedPool: Quantity out of bounds.");
 
         uint256 poolValue = getPoolValue();
@@ -185,33 +154,27 @@ contract CappedPool is ICappedPool {
     * @param _numberOfPoolTokens Number of pool tokens to withdraw.
     * @param _tokenClass Token class (C1 - C4) to withdraw from.
     */
-    function withdraw(uint256 _numberOfPoolTokens, uint256 _tokenClass) public override {
-        require(_tokenClass >= 1 && _tokenClass <= 4, "CappedPool: Token class must be between 1 and 4.");
-        require(_numberOfPoolTokens > 0,
-                "CappedPool: Withdrawal amount must be greater than 0.");
-        require(_numberOfPoolTokens <= CAPPED_POOL_NFT.balanceOf(msg.sender, _tokenClass),
-                "CappedPool: Not enough tokens.");
-        
-        uint256 poolValue = getPoolValue();
+    function withdraw(uint256 _numberOfPoolTokens, uint256 _tokenClass) public override {        
+        withdrawVars.poolValue = getPoolValue();
 
         {
         address[] memory addresses = POOL_MANAGER_LOGIC.getAvailableAssets();
-        uint256 userValue = CAPPED_POOL_NFT.balance(msg.sender).mul(poolValue).div(CAPPED_POOL_NFT.totalSupply());
-        uint256 valueWithdrawn = poolValue.mul(numberOfPoolTokens).div(CAPPED_POOL_NFT.totalSupply());
-        uint256 unrealizedProfits = (userValue > userDeposits[msg.sender]) ? userValue.sub(userDeposits[msg.sender]) : 0;
+        withdrawVars.userValue = CAPPED_POOL_NFT.balance(msg.sender).mul(withdrawVars.poolValue).div(CAPPED_POOL_NFT.totalSupply());
+        withdrawVars.valueWithdrawn = withdrawVars.poolValue.mul(_numberOfPoolTokens).div(CAPPED_POOL_NFT.totalSupply());
+        withdrawVars.unrealizedProfits = (withdrawVars.userValue > CAPPED_POOL_NFT.userDeposits(msg.sender)) ? withdrawVars.userValue.sub(CAPPED_POOL_NFT.userDeposits(msg.sender)) : 0;
+        withdrawVars.unrealizedProfits = withdrawVars.unrealizedProfits.mul(_numberOfPoolTokens).div(CAPPED_POOL_NFT.balance(msg.sender));
 
-        unrealizedProfits = unrealizedProfits.mul(numberOfPoolTokens).div(CAPPED_POOL_NFT.balance(msg.sender));
-        collectedManagerFees = collectedManagerFees.add(unrealizedProfits.mul(POOL_MANAGER_LOGIC.performanceFee()).div(valueWithdrawn).div(10000));
+        collectedManagerFees = collectedManagerFees.add(withdrawVars.unrealizedProfits.mul(POOL_MANAGER_LOGIC.performanceFee()).div(withdrawVars.valueWithdrawn).div(10000));
 
         // Burn the user's pool tokens and update cost basis.
-        uint256 totalDeposits = CAPPED_POOL_NFT.burnTokens(msg.sender, _tokenClass, _numberOfPoolTokens);
+        withdrawVars.totalDeposits = CAPPED_POOL_NFT.burnTokens(msg.sender, _tokenClass, _numberOfPoolTokens);
 
         uint256[] memory amountsWithdrawn = new uint256[](addresses.length);
 
         // Withdraw the user's portion of pool's assets.
         for (uint256 i = 0; i < addresses.length; i++) {
-            uint256 portionOfAssetBalance = _withdrawProcessing(addresses[i], numberOfPoolTokens.mul(10**18).div(CAPPED_POOL_NFT.totalSupply()));
-            uint256 fee = unrealizedProfits.mul(POOL_MANAGER_LOGIC.performanceFee()).mul(portionOfAssetBalance).div(valueWithdrawn).div(10000);
+            uint256 portionOfAssetBalance = _withdrawProcessing(addresses[i], _numberOfPoolTokens.mul(10**18).div(CAPPED_POOL_NFT.totalSupply()));
+            uint256 fee = withdrawVars.unrealizedProfits.mul(POOL_MANAGER_LOGIC.performanceFee()).mul(portionOfAssetBalance).div(withdrawVars.valueWithdrawn).div(10000);
 
             if (portionOfAssetBalance > 0)
             {
@@ -221,22 +184,11 @@ contract CappedPool is ICappedPool {
             }
         }
 
-        emit Withdraw(msg.sender, numberOfPoolTokens, valueWithdrawn, addresses, amountsWithdrawn);
+        emit Withdraw(msg.sender, _numberOfPoolTokens, withdrawVars.valueWithdrawn, addresses, amountsWithdrawn);
         }
 
         // Update the pool's weight in the farming system.
-        POOL_MANAGER.updateWeight(poolValue > totalDeposits ? poolValue.sub(totalDeposits) : 0, _tokenPrice(poolValue));
-    }
-
-    /**
-    * @notice Withdraws the user's full investment.
-    */
-    function exit() external override {
-        for (uint256 i = 1; i <= 4; i++) {
-            if (CAPPED_POOL_NFT.balanceOf(msg.sender, i) > 0) {
-                withdraw(CAPPED_POOL_NFT.balanceOf(msg.sender, i), i);
-            }
-        }
+        POOL_MANAGER.updateWeight(withdrawVars.poolValue > withdrawVars.totalDeposits ? withdrawVars.poolValue.sub(withdrawVars.totalDeposits) : 0, _tokenPrice(withdrawVars.poolValue));
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -248,7 +200,9 @@ contract CappedPool is ICappedPool {
     * @param _cappedPoolNFT Address of the CappedPoolNFT contract.
     * @param _poolManagerLogicAddress Address of the PoolManagerLogic contract.
     */
-    function initializeContracts(address _cappedPoolNFT, address _poolManagerLogicAddress) external override onlyRegistry {
+    function initializeContracts(address _cappedPoolNFT, address _poolManagerLogicAddress) external override {
+        require(msg.sender == ADDRESS_RESOLVER.getContractAddress("Registry"), "CappedPool: Only Registry contract can call this function.");
+
         CAPPED_POOL_NFT = ICappedPoolNFT(_cappedPoolNFT);
         POOL_MANAGER_LOGIC = IPoolManagerLogic(_poolManagerLogicAddress);
 
@@ -365,16 +319,6 @@ contract CappedPool is ICappedPool {
 
     modifier onlyPoolManager() {
         require(msg.sender == manager, "CappedPool: Only pool's manager can call this function.");
-        _;
-    }
-
-    modifier onlyRegistry() {
-        require(msg.sender == ADDRESS_RESOLVER.getContractAddress("Registry"), "CappedPool: Only Registry contract can call this function.");
-        _;
-    }
-
-    modifier onlyOperator() {
-        require(msg.sender == ADDRESS_RESOLVER.getContractAddress("Operator"), "CappedPool: Only Operator can call this function.");
         _;
     }
 
