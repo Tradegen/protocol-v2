@@ -36,4 +36,8 @@ contract TestAssetHandler {
     function getStableCoinAddress() external view returns (address) {
         return stableCoinAddress;
     }
+
+    function getUSDPrice(address) external view returns (uint256) {
+        return 1e18;
+    }
 }
