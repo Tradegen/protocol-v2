@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-
-describe("CappedPoolNFTFactory", () => {
+/*
+describe("PoolManagerLogicFactory", () => {
   let deployer;
   let otherUser;
 
@@ -61,4 +61,4 @@ describe("CappedPoolNFTFactory", () => {
         expect(performanceFee).to.equal(1000);
     });
   });
-});
+});*/
