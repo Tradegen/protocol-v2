@@ -105,10 +105,11 @@ contract Registry is IRegistry, Ownable {
         require(_performanceFee >= 0, "Registry: Performance fee must be positive.");
 
         address poolAddress = ICappedPoolFactory(addressResolver.getContractAddress("CappedPoolFactory")).createCappedPool(msg.sender, _name, _supplyCap, _seedPrice);
+        address poolManagerLogicAddress;
 
         {
         address NFTAddress = ICappedPoolNFTFactory(addressResolver.getContractAddress("CappedPoolNFTFactory")).createCappedPoolNFT(poolAddress, _supplyCap);
-        address poolManagerLogicAddress = IPoolManagerLogicFactory(addressResolver.getContractAddress("PoolManagerLogicFactory")).createPoolManagerLogic(poolAddress, msg.sender, _performanceFee);
+        poolManagerLogicAddress = IPoolManagerLogicFactory(addressResolver.getContractAddress("PoolManagerLogicFactory")).createPoolManagerLogic(poolAddress, msg.sender, _performanceFee);
         ICappedPool(poolAddress).initializeContracts(NFTAddress, poolManagerLogicAddress);
         cappedPoolNFTs[poolAddress] = NFTAddress;
         userCappedPools[msg.sender] = userCappedPools[msg.sender].add(1);
@@ -119,7 +120,7 @@ contract Registry is IRegistry, Ownable {
         IPoolManager(poolManagerAddress).registerPool(poolAddress, _seedPrice);
         }
 
-        emit CreatedCappedPool(poolAddress, msg.sender, _name, _seedPrice, _supplyCap, _performanceFee);
+        emit CreatedCappedPool(poolAddress, poolManagerLogicAddress, msg.sender, _name, _seedPrice, _supplyCap, _performanceFee);
     }
 
     /**
@@ -139,16 +140,16 @@ contract Registry is IRegistry, Ownable {
 
         userPools[msg.sender] = userPools[msg.sender].add(1);
 
-        address poolAddress = IPoolFactory(poolFactoryAddress).createPool(_poolName);
+        address poolAddress = IPoolFactory(poolFactoryAddress).createPool(_poolName, msg.sender);
         address poolManagerLogicAddress = IPoolManagerLogicFactory(poolManagerLogicFactoryAddress).createPoolManagerLogic(poolAddress, msg.sender, _performanceFee);
 
         IPool(poolAddress).setPoolManagerLogic(poolManagerLogicAddress);
 
-        emit CreatedPool(poolAddress, msg.sender, _poolName, _performanceFee);
+        emit CreatedPool(poolAddress, poolManagerLogicAddress, msg.sender, _poolName, _performanceFee);
     }
 
     /* ========== EVENTS ========== */
 
-    event CreatedCappedPool(address poolAddress, address manager, string name, uint256 seedprice, uint256 supplyCap, uint256 performanceFee);
-    event CreatedPool(address poolAddress, address manager, string name, uint256 performanceFee);
+    event CreatedCappedPool(address poolAddress, address poolManagerLogicAddress, address manager, string name, uint256 seedprice, uint256 supplyCap, uint256 performanceFee);
+    event CreatedPool(address poolAddress, address poolManagerLogicAddress, address manager, string name, uint256 performanceFee);
 }

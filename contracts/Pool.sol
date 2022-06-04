@@ -35,7 +35,7 @@ contract Pool is IPool, ERC20 {
     uint256 public totalDeposits;
 
     constructor(string memory _poolName, address _manager, address _addressResolver) ERC20(_poolName, "") {
-        _manager = manager;
+        manager = _manager;
         ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
     }
 

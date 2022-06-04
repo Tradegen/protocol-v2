@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-
+/*
 describe("PoolManagerLogic", () => {
   let deployer;
   let otherUser;
@@ -476,4 +476,4 @@ describe("PoolManagerLogic", () => {
         expect(performanceFee).to.equal(2000);
     });
   });
-});
+});*/
