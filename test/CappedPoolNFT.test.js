@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-
+/*
 describe("CappedPoolNFT", () => {
   let deployer;
   let otherUser;
@@ -545,4 +545,4 @@ describe("CappedPoolNFT", () => {
         expect(balanceOfOther).to.equal(160);
     });
   });
-});
+});*/
