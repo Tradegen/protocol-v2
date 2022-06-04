@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-/*
+
 describe("PoolFactory", () => {
   let deployer;
   let otherUser;
@@ -41,13 +41,13 @@ describe("PoolFactory", () => {
   
   describe("#createPool", () => {
     it("onlyRegistry", async () => {
-      let tx = poolFactoryContract.connect(otherUser).createPool("Pool");
+      let tx = poolFactoryContract.connect(otherUser).createPool("Pool", deployer.address);
       await expect(tx).to.be.reverted;
     });
 
     it('meets requirements', async () => {
-        let tx = await poolFactoryContract.createPool("Pool");
+        let tx = await poolFactoryContract.createPool("Pool", deployer.address);
         await tx.wait();
     });
   });
-});*/
+});
