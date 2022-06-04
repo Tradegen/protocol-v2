@@ -28,7 +28,14 @@ contract Registry is IRegistry, Ownable {
 
     IAddressResolver public immutable addressResolver;
 
+    // (capped pool address => capped pool NFT address).
     mapping (address => address) public cappedPoolNFTs;
+
+    // (user address => number of pools the user manages).
+    mapping (address => uint256) public userPools;
+
+    // (user address => number of capped pools the user manages).
+    mapping (address => uint256) public userCappedPools;
 
     constructor(address _addressResolver) Ownable() {
         addressResolver = IAddressResolver(_addressResolver);
@@ -88,13 +95,14 @@ contract Registry is IRegistry, Ownable {
     function createCappedPool(string memory _name, uint256 _seedPrice, uint256 _supplyCap, uint256 _performanceFee) external override {
         address settingsAddress = addressResolver.getContractAddress("Settings");
 
-        require(bytes(_name).length < 50, "CappedPoolFactory: Pool name must have less than 50 characters.");
-        require(_supplyCap <= ISettings(settingsAddress).getParameterValue("MaximumNumberOfCappedPoolTokens"), "CappedPoolFactory: Cannot exceed max supply cap.");
-        require(_supplyCap >= ISettings(settingsAddress).getParameterValue("MinimumNumberOfCappedPoolTokens"), "CappedPoolFactory: Cannot have less than min supply cap.");
-        require(_seedPrice >= ISettings(settingsAddress).getParameterValue("MinimumCappedPoolSeedPrice"), "CappedPoolFactory: Seed price must be greater than min seed price.");
-        require(_seedPrice <= ISettings(settingsAddress).getParameterValue("MaximumCappedPoolSeedPrice"), "CappedPoolFactory: Seed price must be less than max seed price.");
-        require(_performanceFee <= ISettings(settingsAddress).getParameterValue("MaximumPerformanceFee"), "PoolFactory: Cannot exceed maximum performance fee.");
-        require(_performanceFee >= 0, "PoolFactory: Performance fee must be positive.");
+        require(userCappedPools[msg.sender] < ISettings(settingsAddress).getParameterValue("MaximumNumberOfPoolsPerUser"), "Registry: User has too many capped pools.");
+        require(bytes(_name).length < 50, "Registry: Pool name must have less than 50 characters.");
+        require(_supplyCap <= ISettings(settingsAddress).getParameterValue("MaximumNumberOfCappedPoolTokens"), "Registry: Cannot exceed max supply cap.");
+        require(_supplyCap >= ISettings(settingsAddress).getParameterValue("MinimumNumberOfCappedPoolTokens"), "Registry: Cannot have less than min supply cap.");
+        require(_seedPrice >= ISettings(settingsAddress).getParameterValue("MinimumCappedPoolSeedPrice"), "Registry: Seed price must be greater than min seed price.");
+        require(_seedPrice <= ISettings(settingsAddress).getParameterValue("MaximumCappedPoolSeedPrice"), "Registry: Seed price must be less than max seed price.");
+        require(_performanceFee <= ISettings(settingsAddress).getParameterValue("MaximumPerformanceFee"), "Registry: Cannot exceed maximum performance fee.");
+        require(_performanceFee >= 0, "Registry: Performance fee must be positive.");
 
         address poolAddress = ICappedPoolFactory(addressResolver.getContractAddress("CappedPoolFactory")).createCappedPool(msg.sender, _name, _supplyCap, _seedPrice);
 
@@ -103,6 +111,7 @@ contract Registry is IRegistry, Ownable {
         address poolManagerLogicAddress = IPoolManagerLogicFactory(addressResolver.getContractAddress("PoolManagerLogicFactory")).createPoolManagerLogic(poolAddress, msg.sender, _performanceFee);
         ICappedPool(poolAddress).initializeContracts(NFTAddress, poolManagerLogicAddress);
         cappedPoolNFTs[poolAddress] = NFTAddress;
+        userCappedPools[msg.sender] = userCappedPools[msg.sender].add(1);
         }
 
         {
@@ -123,9 +132,12 @@ contract Registry is IRegistry, Ownable {
         address poolManagerLogicFactoryAddress = addressResolver.getContractAddress("PoolManagerLogicFactory");
         address settingsAddress = addressResolver.getContractAddress("Settings");
 
-        require(bytes(_poolName).length < 50, "PoolFactory: Pool name must have less than 50 characters.");
-        require(_performanceFee <= ISettings(settingsAddress).getParameterValue("MaximumPerformanceFee"), "PoolFactory: Cannot exceed maximum performance fee.");
-        require(_performanceFee >= 0, "PoolFactory: Performance fee must be positive.");
+        require(userPools[msg.sender] < ISettings(settingsAddress).getParameterValue("MaximumNumberOfPoolsPerUser"), "Registry: User has too many pools.");
+        require(bytes(_poolName).length < 50, "Registry: Pool name must have less than 50 characters.");
+        require(_performanceFee <= ISettings(settingsAddress).getParameterValue("MaximumPerformanceFee"), "Registry: Cannot exceed maximum performance fee.");
+        require(_performanceFee >= 0, "Registry: Performance fee must be positive.");
+
+        userPools[msg.sender] = userPools[msg.sender].add(1);
 
         address poolAddress = IPoolFactory(poolFactoryAddress).createPool(_poolName);
         address poolManagerLogicAddress = IPoolManagerLogicFactory(poolManagerLogicFactoryAddress).createPoolManagerLogic(poolAddress, msg.sender, _performanceFee);

@@ -151,7 +151,7 @@ contract MoolaAdapter is IMoolaAdapter, Ownable {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
 
         require(_underlyingAsset != address(0), "MoolaAdapter: Invalid underlying asset address.");
-        require(_interestBearingToken != address(0), "MoolaAdapter: IInvalid interest-bearing token address.");
+        require(_interestBearingToken != address(0), "MoolaAdapter: Invalid interest-bearing token address.");
         require(_lendingPool != address(0), "MoolaAdapter: Invalid lending pool address.");
         require(moolaAssets[_interestBearingToken].underlyingAsset == address(0), "MoolaAdapter: Asset already exists.");
         require(IAssetHandler(assetHandlerAddress).isValidAsset(_underlyingAsset), "MoolaAdapter: Underlying asset is not available.");

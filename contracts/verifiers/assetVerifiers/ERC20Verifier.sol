@@ -45,7 +45,7 @@ contract ERC20Verifier is IVerifier, IAssetVerifier {
             address verifier = ADDRESS_RESOLVER.contractVerifiers(spender);
 
             // Checks if the spender is an approved address.
-            require(verifier != address(0), "ERC20Verifier: unsupported spender approval."); 
+            require(verifier != address(0), "ERC20Verifier: Unsupported spender approval."); 
 
             emit Approve(_pool, spender, amount);
 

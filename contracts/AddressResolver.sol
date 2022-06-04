@@ -106,7 +106,7 @@ contract AddressResolver is IAddressResolver, Ownable {
     }
 
     modifier onlyPoolFactory() {
-        require(msg.sender == contractAddresses["PoolFactory"], "AddressResolver: Only the PoolFactory contract can call this function.");
+        require(msg.sender == contractAddresses["PoolFactory"] || msg.sender == contractAddresses["CappedPoolFactory"], "AddressResolver: Only the PoolFactory or CappedPoolFactory contract can call this function.");
         _;
     }
 

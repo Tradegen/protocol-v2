@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-
+/*
 describe("MobiusAdapter", () => {
   let deployer;
   let otherUser;
@@ -15,6 +15,8 @@ describe("MobiusAdapter", () => {
 
   let mobiusToken;
   let mobiusTokenAddress;
+  let mobiusToken2;
+  let mobiusTokenAddress2;
   let underlyingToken;
   let underlyingTokenAddress;
   let stakingToken;
@@ -47,7 +49,7 @@ describe("MobiusAdapter", () => {
     TokenFactory = await ethers.getContractFactory('TestTokenERC20');
     UbeswapAdapterFactory = await ethers.getContractFactory('TestUbeswapAdapter');
     MobiusSwapFactory = await ethers.getContractFactory('TestMobiusSwap');
-    MobiusMasterMindFactory = await ethers.getContractFactory('TestMobiusMasterMind');
+    MobiusMasterMindFactory = await ethers.getContractFactory('TestMobiusMastermind');
     MobiusAdapterFactory = await ethers.getContractFactory('MobiusAdapter');
 
     addressResolver = await AddressResolverFactory.deploy();
@@ -62,11 +64,15 @@ describe("MobiusAdapter", () => {
     await mobiusToken.deployed();
     mobiusTokenAddress = mobiusToken.address;
 
+    mobiusToken2 = await TokenFactory.deploy("Mobius2", "MOB2");
+    await mobiusToken2.deployed();
+    mobiusTokenAddress2 = mobiusToken2.address;
+
     stakingToken = await TokenFactory.deploy("Staking", "STK");
     await stakingToken.deployed();
     stakingTokenAddress = stakingToken.address;
 
-    ubeswapAdapter = await UbeswapAdapterFactory.deploy(addressResolverAddress);
+    ubeswapAdapter = await UbeswapAdapterFactory.deploy();
     await ubeswapAdapter.deployed();
     ubeswapAdapterAddress = ubeswapAdapter.address;
 
@@ -100,9 +106,6 @@ describe("MobiusAdapter", () => {
 
     let tx2 = await addressResolver.setContractAddress("MobiusMasterMind", mobiusMasterMindAddress);
     await tx2.wait();
-
-    let tx3 = await assetHandler.addAssetType(3, deployer.address);
-    await tx3.wait();
   });
 
   describe("#addMobiusAsset", () => {
@@ -117,7 +120,7 @@ describe("MobiusAdapter", () => {
     });
 
     it("interest bearing token not valid", async () => {
-        let tx = await assetHandler.addCurrencyKey(3, underlyingTokenAddress);
+        let tx = await assetHandler.setValidAsset(underlyingTokenAddress, 1);
         await tx.wait();
 
         let tx2 = mobiusAdapter.addMobiusAsset(mobiusTokenAddress, stakingTokenAddress, underlyingTokenAddress, mobiusSwapAddress, 1);
@@ -125,10 +128,10 @@ describe("MobiusAdapter", () => {
     });
 
     it("meets requirements", async () => {
-        let tx = await assetHandler.addCurrencyKey(3, underlyingTokenAddress);
+        let tx = await assetHandler.setValidAsset(underlyingTokenAddress, 1);
         await tx.wait();
 
-        let tx2 = await assetHandler.addCurrencyKey(3, mobiusTokenAddress);
+        let tx2 = await assetHandler.setValidAsset(mobiusTokenAddress, 3);
         await tx2.wait();
 
         let tx3 = await mobiusAdapter.addMobiusAsset(mobiusTokenAddress, stakingTokenAddress, underlyingTokenAddress, mobiusSwapAddress, 1);
@@ -158,10 +161,10 @@ describe("MobiusAdapter", () => {
     });
 
     it("asset already exists", async () => {
-        let tx = await assetHandler.addCurrencyKey(3, underlyingTokenAddress);
+        let tx = await assetHandler.setValidAsset(underlyingTokenAddress, 1);
         await tx.wait();
 
-        let tx2 = await assetHandler.addCurrencyKey(3, mobiusTokenAddress);
+        let tx2 = await assetHandler.setValidAsset(mobiusTokenAddress, 3);
         await tx2.wait();
 
         let tx3 = await mobiusAdapter.addMobiusAsset(mobiusTokenAddress, stakingTokenAddress, underlyingTokenAddress, mobiusSwapAddress, 1);
@@ -193,44 +196,42 @@ describe("MobiusAdapter", () => {
         await expect(price).to.be.reverted;
     });
 
-    it("asset is denomination asset", async () => {
-        let tx = await mobiusAdapter.setEquivalentUbeswapAsset(underlyingTokenAddress, otherUser.address);
+    it("meets requirements", async () => {
+        let tx = await assetHandler.setValidAsset(underlyingTokenAddress, 1);
         await tx.wait();
 
-        let tx2 = await ubeswapAdapter.setPrice(otherUser.address, parseEther("2"));
+        let tx2 = await assetHandler.setValidAsset(mobiusTokenAddress, 3);
         await tx2.wait();
 
-        let price = await mobiusAdapter.getPrice(underlyingTokenAddress);
-        expect(price).to.equal(parseEther("2"));
-    });
-
-    it("asset is mobius asset", async () => {
-        let tx = await mobiusAdapter.setEquivalentUbeswapAsset(underlyingTokenAddress, otherUser.address);
-        await tx.wait();
-
-        let tx2 = await ubeswapAdapter.setPrice(otherUser.address, parseEther("2"));
-        await tx2.wait();
-
-        let tx3 = await mobiusSwap.setVirtualPrice(parseEther("5"));
+        let tx3 = await mobiusAdapter.addMobiusAsset(mobiusTokenAddress, stakingTokenAddress, underlyingTokenAddress, mobiusSwapAddress, 1);
         await tx3.wait();
 
+        let tx4 = await mobiusAdapter.setEquivalentUbeswapAsset(underlyingTokenAddress, otherUser.address);
+        await tx4.wait();
+
+        let tx5 = await ubeswapAdapter.setPrice(otherUser.address, parseEther("2"));
+        await tx5.wait();
+
+        let tx6 = await mobiusSwap.setVirtualPrice(parseEther("1"));
+        await tx6.wait();
+
         let price = await mobiusAdapter.getPrice(mobiusTokenAddress);
-        expect(price).to.equal(parseEther("10"));
+        expect(price).to.equal(parseEther("2"));
     });
   });
-
+  
   describe("#getAvailableMobiusFarms", () => {
     it("no farms", async () => {
         let farms = await mobiusAdapter.getAvailableMobiusFarms();
         expect(farms[0].length).to.equal(0);
-        expect(farms[1].length).to.equal(1);
+        expect(farms[1].length).to.equal(0);
     });
 
     it("one farm", async () => {
-        let tx = await assetHandler.addCurrencyKey(3, underlyingTokenAddress);
+        let tx = await assetHandler.setValidAsset(underlyingTokenAddress, 1);
         await tx.wait();
 
-        let tx2 = await assetHandler.addCurrencyKey(3, mobiusTokenAddress);
+        let tx2 = await assetHandler.setValidAsset(mobiusTokenAddress, 3);
         await tx2.wait();
 
         let tx3 = await mobiusAdapter.addMobiusAsset(mobiusTokenAddress, stakingTokenAddress, underlyingTokenAddress, mobiusSwapAddress, 1);
@@ -244,17 +245,20 @@ describe("MobiusAdapter", () => {
     });
 
     it("multiple farms", async () => {
-        let tx = await assetHandler.addCurrencyKey(3, underlyingTokenAddress);
+        let tx = await assetHandler.setValidAsset(underlyingTokenAddress, 1);
         await tx.wait();
 
-        let tx2 = await assetHandler.addCurrencyKey(3, mobiusTokenAddress);
+        let tx2 = await assetHandler.setValidAsset(mobiusTokenAddress, 3);
         await tx2.wait();
 
-        let tx3 = await mobiusAdapter.addMobiusAsset(mobiusTokenAddress, stakingTokenAddress, underlyingTokenAddress, mobiusSwapAddress, 1);
+        let tx3 = await assetHandler.setValidAsset(mobiusTokenAddress2, 3);
         await tx3.wait();
 
-        let tx4 = await mobiusAdapter.addMobiusAsset(mobiusTokenAddress, otherUser.address, underlyingTokenAddress, mobiusSwapAddress, 2);
+        let tx4 = await mobiusAdapter.addMobiusAsset(mobiusTokenAddress, stakingTokenAddress, underlyingTokenAddress, mobiusSwapAddress, 1);
         await tx4.wait();
+
+        let tx5 = await mobiusAdapter.addMobiusAsset(mobiusTokenAddress2, otherUser.address, underlyingTokenAddress, mobiusSwapAddress, 2);
+        await tx5.wait();
 
         let farms = await mobiusAdapter.getAvailableMobiusFarms();
         expect(farms[0].length).to.equal(2);
@@ -265,4 +269,4 @@ describe("MobiusAdapter", () => {
         expect(farms[1][1]).to.equal(2);
     });
   });
-});
+});*/

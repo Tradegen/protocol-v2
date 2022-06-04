@@ -27,4 +27,8 @@ contract TestUbeswapAdapter {
 
         return prices[_asset];
     }
+
+    function getAmountsOut(uint256 _numberOfTokens, address _in, address _out) external view returns (uint256) {
+        return 1e18;
+    }
 }

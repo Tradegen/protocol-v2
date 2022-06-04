@@ -46,8 +46,6 @@ contract MobiusLPVerifier is ERC20Verifier, Ownable, IMobiusLPVerifier {
     * @return (WithdrawalData) A struct containing the asset withdrawn, amount of asset withdrawn, and the transactions used to execute the withdrawal.
     */
     function prepareWithdrawal(address _pool, address _asset, uint256 _portion) external view override returns (WithdrawalData memory) {
-        require(_pool != address(0), "MobiusLPVerifier: Invalid pool address.");
-        require(_asset != address(0), "MobiusLPVerifier: Invalid asset address.");
         require(_portion > 0, "MobiusLPVerifier: Portion must be greater than 0.");
         require(mobiusFarms[stakingTokens[_asset]] == _asset, "MobiusLPVerifier: Asset not supported.");
 
@@ -80,14 +78,12 @@ contract MobiusLPVerifier is ERC20Verifier, Ownable, IMobiusLPVerifier {
     * @return uint256 Pool's balance in the asset.
     */
     function getBalance(address _pool, address _asset) public view override returns (uint256) {
-        require(_pool != address(0), "MobiusLPVerifier: Invalid pool address");
-        require(_asset != address(0), "MobiusLPVerifier: Invalid asset address");
         require(mobiusFarms[stakingTokens[_asset]] == _asset, "MobiusLPVerifier: Asset not supported.");
 
         uint256 poolBalance = IERC20(_asset).balanceOf(_pool);
-        uint256 stakedBalance = MASTER_MIND.userInfo(stakingTokens[_asset], _pool).amount;
+        IMasterMind.UserInfo memory userInfo = MASTER_MIND.userInfo(stakingTokens[_asset], _pool);
 
-        return poolBalance.add(stakedBalance);
+        return poolBalance.add(userInfo.amount);
     }
 
     /**
@@ -97,7 +93,6 @@ contract MobiusLPVerifier is ERC20Verifier, Ownable, IMobiusLPVerifier {
     * @return (uint256, address) The staking token's farm ID and the reward token.
     */
     function getFarmID(address _stakingToken) external view override returns (uint256, address) {
-        require(_stakingToken != address(0), "MobiusLPVerifier: Invalid staking token address.");
         require(mobiusFarms[stakingTokens[_stakingToken]] == _stakingToken, "MobiusLPVerifier: Asset not supported.");
 
         return (stakingTokens[_stakingToken], rewardToken);
@@ -112,7 +107,7 @@ contract MobiusLPVerifier is ERC20Verifier, Ownable, IMobiusLPVerifier {
     * @param _pid Farm ID for the LP token.
     */
     function setFarmAddress(address _stakingToken, uint256 _pid) external onlyOwner {
-        require(_stakingToken != address(0), "MobiusLPVerifier: Invalid staking token address");
+        require(_stakingToken != address(0), "MobiusLPVerifier: Invalid staking token address.");
         require(_pid >= 0, "MobiusLPVerifier: Invalid pid.");
         require(mobiusFarms[_pid] == address(0), "MobiusLPVerifier: Farm already exists.");
 

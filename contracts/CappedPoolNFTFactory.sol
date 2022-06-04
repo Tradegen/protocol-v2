@@ -29,7 +29,7 @@ contract CappedPoolNFTFactory is ICappedPoolNFTFactory {
     function createCappedPoolNFT(address _pool, uint256 _supplyCap) external override onlyRegistry returns (address) {
         address cappedPoolNFTContract = address(new CappedPoolNFT(_pool, _supplyCap));
 
-        emit CreatedCappedPoolNFT(_pool, _supplyCap);
+        emit CreatedCappedPoolNFT(cappedPoolNFTContract, _pool, _supplyCap);
 
         return cappedPoolNFTContract;
     }
@@ -44,5 +44,5 @@ contract CappedPoolNFTFactory is ICappedPoolNFTFactory {
 
     /* ========== EVENTS ========== */
 
-    event CreatedCappedPoolNFT(address pool, uint256 supplyCap);
+    event CreatedCappedPoolNFT(address cappedPoolNFT, address pool, uint256 supplyCap);
 }

@@ -149,7 +149,7 @@ contract CappedPoolNFT is ICappedPoolNFT, ERC1155 {
     }
 
     /**
-    * @dev Transfers tokens from seller to buyer.
+    * @notice Transfers tokens from seller to buyer.
     * @param from Address of the seller.
     * @param to Address of the buyer.
     * @param id The class of the asset's token; in range [1, 4].
@@ -163,7 +163,7 @@ contract CappedPoolNFT is ICappedPoolNFT, ERC1155 {
         );
 
         uint256 tokenPrice = ICappedPool(pool).tokenPrice();
-        uint256 amountOfUSD = amount.mul(tokenPrice).div(10**18);
+        uint256 amountOfUSD = amount.mul(tokenPrice);
         uint256 decrement = userDeposits[from].mul(amount).div(balance[from]);
 
         userDeposits[from] = userDeposits[from].sub(decrement);

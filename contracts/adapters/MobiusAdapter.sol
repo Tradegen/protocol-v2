@@ -41,6 +41,9 @@ contract MobiusAdapter is IMobiusAdapter, Ownable {
     // (asset, asset) LP pair => address of Swap contract.
     mapping (address => mapping(address => address)) public swapAddresses;
 
+    // (Mobius pair => Mobius asset).
+    mapping (address => address) public pairToAsset;
+
     constructor(address _addressResolver) Ownable() {
         ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
     }
@@ -53,9 +56,7 @@ contract MobiusAdapter is IMobiusAdapter, Ownable {
     * @return address Address of the LP token's Swap contract.
     */
     function getSwapAddress(address _pair) external view override returns (address) {
-        require(_pair != address(0), "MobiusAdapter: Invalid pair address.");
-
-        return mobiusAssets[_pair].swapAddress;
+        return mobiusAssets[pairToAsset[_pair]].swapAddress;
     }
 
     /**
@@ -77,10 +78,8 @@ contract MobiusAdapter is IMobiusAdapter, Ownable {
 
         // Get the (asset/denomination) price on Mobius and divide by
         // the price of the denomination asset.
-        if (mobiusAssets[_currencyKey].denominationAsset != _currencyKey) {
-            uint256 mobiusPrice = ISwap(mobiusAssets[_currencyKey].swapAddress).getVirtualPrice();
-            price = price.mul(mobiusPrice).div(10 ** 18);
-        }
+        uint256 mobiusPrice = ISwap(mobiusAssets[_currencyKey].swapAddress).getVirtualPrice();
+        price = price.mul(mobiusPrice).div(10 ** 18);
     }
 
     /**
@@ -94,8 +93,7 @@ contract MobiusAdapter is IMobiusAdapter, Ownable {
         uint256[] memory farmIDs = new uint256[](assetAddresses.length);
 
         //Get farm IDs.
-        for (uint256 i = 0; i < assetAddresses.length; i++)
-        {
+        for (uint256 i = 0; i < assetAddresses.length; i++) {
             stakingTokenAddresses[i] = mobiusAssets[assetAddresses[i]].stakingToken;
             farmIDs[i] = mobiusAssets[assetAddresses[i]].pid;
         }
@@ -109,9 +107,7 @@ contract MobiusAdapter is IMobiusAdapter, Ownable {
     * @return bool Whether the pair has a farm.
     */
     function checkIfLPTokenHasFarm(address _pair) external view override returns (bool) {
-        require(_pair != address(0), "MobiusAdapter: Invalid pair address.");
-
-        return (mobiusAssets[_pair].stakingToken != address(0));
+        return (mobiusAssets[pairToAsset[_pair]].stakingToken != address(0));
     }
 
     /**
@@ -121,9 +117,6 @@ contract MobiusAdapter is IMobiusAdapter, Ownable {
     * @return address The pair's address.
     */
     function getPair(address _tokenA, address _tokenB) public view override returns (address) {
-        require(_tokenA != address(0), "MobiusAdapter: Invalid address for tokenA.");
-        require(_tokenB != address(0), "MobiusAdapter: Invalid address for tokenB.");
-
         address swapAddress = swapAddresses[_tokenA][_tokenB];
 
         require(swapAddress != address(0), "MobiusAdapter: Swap address for token pair not found.");
@@ -178,6 +171,7 @@ contract MobiusAdapter is IMobiusAdapter, Ownable {
 
         swapAddresses[_denominationAsset][_asset] = _swapAddress;
         swapAddresses[_asset][_denominationAsset] = _swapAddress;
+        pairToAsset[_stakingToken] = _asset;
 
         emit AddedMobiusAsset(_asset, _stakingToken, _denominationAsset, _swapAddress, _pid);
     }

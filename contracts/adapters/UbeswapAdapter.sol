@@ -40,15 +40,14 @@ contract UbeswapAdapter is IUbeswapAdapter {
     * @param _currencyKey Address of the asset.
     * @return uint Price of the asset.
     */
-    function getPrice(address _currencyKey) external view override returns(uint256) {
+    function getPrice(address _currencyKey) external view override returns (uint256) {
         address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
         address ubeswapRouterAddress = ADDRESS_RESOLVER.getContractAddress("UbeswapRouter");
         address stableCoinAddress = IAssetHandler(assetHandlerAddress).getStableCoinAddress();
 
         // Check if currency key is a stablecoin.
         // If so, return $1 as the price.
-        if (_currencyKey == stableCoinAddress)
-        {
+        if (_currencyKey == stableCoinAddress) {
             return 10 ** _getDecimals(_currencyKey);
         }
 
@@ -104,7 +103,7 @@ contract UbeswapAdapter is IUbeswapAdapter {
         address[] memory path = IUbeswapPathManager(ubeswapPathManagerAddress).getPath(_currencyKeyIn, _currencyKeyOut);
         uint256[] memory amounts = IUniswapV2Router02(ubeswapRouterAddress).getAmountsIn(_numberOfTokens, path);
 
-        return amounts[1];
+        return amounts[0];
     }
 
     /**
