@@ -185,7 +185,7 @@ contract PoolManagerLogic is IPoolManagerLogic {
             }
         }
 
-        if (index < depositAssets.length) {
+        if (index == depositAssets.length) {
             return;
         }
 
