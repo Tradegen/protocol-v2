@@ -1,0 +1,13 @@
+With farming system:
+
+CappedPool.deposit() = 450864
+CappedPool.executeTransaction() = 331039
+CappedPool.takeSnapshot() = 288352
+CappedPool.withdraw() = 515178
+
+Without farming system:
+
+CappedPool.deposit() = 293603
+CappedPool.executeTransaction() = 139294
+CappedPool.takeSnapshot() = 130807
+CappedPool.withdraw() = 283713

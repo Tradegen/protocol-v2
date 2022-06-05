@@ -3,7 +3,7 @@ const { parseEther } = require("@ethersproject/units");
 const Web3 = require("web3");
 const { ethers } = require("hardhat");
 const web3 = new Web3('https://alfajores-forno.celo-testnet.org');
-/*
+
 describe("CappedPool", () => {
   let deployer;
   let otherUser;
@@ -172,7 +172,7 @@ describe("CappedPool", () => {
     await tx.wait();
   });
   
-  describe("#deposit", () => {
+  describe("#deposit", () => {/*
     it("is not deposit asset", async () => {
         let tx = cappedPool.deposit(100, otherUser.address)
         await expect(tx).to.be.reverted;
@@ -187,7 +187,7 @@ describe("CappedPool", () => {
 
         let balance = await cappedPoolNFT.balance(deployer.address);
         expect(balance).to.equal(0);
-    });  
+    });  */
 
     it("meets requirements", async () => {
         let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
@@ -303,7 +303,7 @@ describe("CappedPool", () => {
         expect(tokenBalancePerClass[2]).to.equal(0);
         expect(tokenBalancePerClass[3]).to.equal(0);
     });
-
+    /*
     it("meets requirements; all", async () => {
         let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
         await tx.wait();
@@ -440,10 +440,10 @@ describe("CappedPool", () => {
         expect(tokenBalancePerClass[1]).to.equal(50);
         expect(tokenBalancePerClass[2]).to.equal(0);
         expect(tokenBalancePerClass[3]).to.equal(0);
-    });
+    });*/
   });
 
-  describe("#executeTransaction", () => {
+  describe("#executeTransaction", () => {/*
     it("not pool manager", async () => {
         let params = web3.eth.abi.encodeFunctionCall({
             name: 'approve',
@@ -476,7 +476,7 @@ describe("CappedPool", () => {
 
         let tx = cappedPool.executeTransaction(otherUser.address, params);
         await expect(tx).to.be.reverted;
-    });
+    });*/
 
     it("meets requirements", async () => {
         let params = web3.eth.abi.encodeFunctionCall({
@@ -502,7 +502,7 @@ describe("CappedPool", () => {
     });
   });
 
-  describe("#takeSnapshot", () => {
+  describe("#takeSnapshot", () => {/*
     it("not pool manager", async () => {
         let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
         await tx.wait();
@@ -523,7 +523,7 @@ describe("CappedPool", () => {
 
         let timestampAtLastSnapshot = await cappedPool.timestampAtLastSnapshot();
         expect(timestampAtLastSnapshot).to.equal(0);
-    });  
+    });  */
 
     it("meets requirements", async () => {
         let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
@@ -537,7 +537,7 @@ describe("CappedPool", () => {
 
         let unrealizedProfitsAtLastSnapshot = await cappedPool.unrealizedProfitsAtLastSnapshot();
         expect(unrealizedProfitsAtLastSnapshot).to.equal(parseEther("100"));
-    }); 
+    }); /*
 
     it("not enough time between updates", async () => {
         let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
@@ -548,6 +548,6 @@ describe("CappedPool", () => {
 
         let tx3 = cappedPool.takeSnapshot();
         await expect(tx3).to.be.reverted;
-    }); 
+    }); */
   });
-});*/
+});
