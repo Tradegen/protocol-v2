@@ -18,6 +18,7 @@ import './interfaces/IPoolFactory.sol';
 import './interfaces/ICappedPool.sol';
 import './interfaces/ICappedPoolNFT.sol';
 import './interfaces/IPool.sol';
+import './interfaces/IPoolManagerLogic.sol';
 import './interfaces/IAssetHandler.sol';
 
 // Inheritance.
@@ -81,6 +82,31 @@ contract Registry is IRegistry, Ownable {
         }
         
         return (IERC20(_pool).totalSupply() == 0) ? 0 : IPool(_pool).getPoolValue().mul(IERC20(_pool).balanceOf(_user)).div(IERC20(_pool).totalSupply());
+    }
+
+    /**
+    * @notice Returns the currency address and balance of each position the pool has, as well as the cumulative value.
+    * @param _pool Address of the pool, or capped pool.
+    * @return (address[], uint256[], uint256) Currency address and balance of each position the pool has, and the cumulative value of positions.
+    */
+    function getPositionsAndTotal(address _pool) public view override returns (address[] memory, uint256[] memory, uint256) {
+        address assetHandlerAddress = addressResolver.getContractAddress("AssetHandler");
+        address[] memory addresses = IPoolManagerLogic(IPoolManagerLogicFactory(addressResolver.getContractAddress("PoolManagerLogicFactory")).getPoolManagerLogic(_pool)).getAvailableAssets();
+        uint256[] memory balances = new uint256[](addresses.length);
+        uint256 sum;
+
+        // Calculate the USD value of each asset.
+        for (uint256 i = 0; i < addresses.length; i++) {
+            balances[i] = IAssetHandler(assetHandlerAddress).getBalance(_pool, addresses[i]);
+
+            uint256 numberOfDecimals = IAssetHandler(assetHandlerAddress).getDecimals(addresses[i]);
+            uint256 USDperToken = IAssetHandler(assetHandlerAddress).getUSDPrice(addresses[i]);
+            uint256 positionBalanceInUSD = balances[i].mul(USDperToken).div(10 ** numberOfDecimals);
+            sum = sum.add(positionBalanceInUSD);
+        }
+
+
+        return (addresses, balances, sum);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */

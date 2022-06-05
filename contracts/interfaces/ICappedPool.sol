@@ -20,12 +20,6 @@ interface ICappedPool {
     * @return address Address of the pool's manager.
     */
     function manager() external view returns (address);
-    
-    /**
-    * @notice Returns the currency address and balance of each position the pool has, as well as the cumulative value.
-    * @return (address[], uint256[], uint256) Currency address and balance of each position the pool has, and the cumulative value of positions.
-    */
-    function getPositionsAndTotal() external view returns (address[] memory, uint256[] memory, uint256);
 
     /**
     * @notice Returns the value of the pool in USD.

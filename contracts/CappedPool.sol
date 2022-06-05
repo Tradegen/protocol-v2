@@ -74,30 +74,6 @@ contract CappedPool is ICappedPool {
     }
 
     /**
-    * @notice Returns the currency address and balance of each position the pool has, as well as the cumulative value.
-    * @return (address[], uint256[], uint256) Currency address and balance of each position the pool has, and the cumulative value of positions.
-    */
-    function getPositionsAndTotal() public view override returns (address[] memory, uint256[] memory, uint256) {
-        address assetHandlerAddress = ADDRESS_RESOLVER.getContractAddress("AssetHandler");
-        address[] memory addresses = POOL_MANAGER_LOGIC.getAvailableAssets();
-        uint256[] memory balances = new uint256[](addresses.length);
-        uint256 sum;
-
-        // Calculate the USD value of each asset.
-        for (uint256 i = 0; i < addresses.length; i++) {
-            balances[i] = IAssetHandler(assetHandlerAddress).getBalance(address(this), addresses[i]);
-
-            uint256 numberOfDecimals = IAssetHandler(assetHandlerAddress).getDecimals(addresses[i]);
-            uint256 USDperToken = IAssetHandler(assetHandlerAddress).getUSDPrice(addresses[i]);
-            uint256 positionBalanceInUSD = balances[i].mul(USDperToken).div(10 ** numberOfDecimals);
-            sum = sum.add(positionBalanceInUSD);
-        }
-
-
-        return (addresses, balances, sum);
-    }
-
-    /**
     * @notice Returns the value of the pool in USD.
     */
     function getPoolValue() public view override returns (uint256) {

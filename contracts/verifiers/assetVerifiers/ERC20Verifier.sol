@@ -30,10 +30,11 @@ contract ERC20Verifier is IVerifier, IAssetVerifier {
     /**
     * @notice Parses the transaction data to make sure the transaction is valid.
     * @param _pool Address of the pool.
+    * @param _to Address of the external contract.
     * @param _data Transaction call data.
     * @return (bool, address, uint256) Whether the transaction is valid, the received asset, and the transaction type.
     */
-    function verify(address _pool, address, bytes calldata _data) external virtual override returns (bool, address, uint256) {
+    function verify(address _pool, address _to, bytes calldata _data) external virtual override returns (bool, address, uint256) {
         bytes4 method = Bytes.getMethod(_data);
 
         if (method == bytes4(keccak256("approve(address,uint256)")))
@@ -49,7 +50,7 @@ contract ERC20Verifier is IVerifier, IAssetVerifier {
 
             emit Approve(_pool, spender, amount);
 
-            return (true, address(0), 1);
+            return (true, _to, 1);
         }
 
         return (false, address(0), 0);

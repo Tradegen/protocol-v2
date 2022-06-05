@@ -31,6 +31,13 @@ interface IRegistry {
     */
     function getUSDBalance(address _user, address _pool, bool _isCappedPool) external view returns (uint256);
 
+    /**
+    * @notice Returns the currency address and balance of each position the pool has, as well as the cumulative value.
+    * @param _pool Address of the pool, or capped pool.
+    * @return (address[], uint256[], uint256) Currency address and balance of each position the pool has, and the cumulative value of positions.
+    */
+    function getPositionsAndTotal(address _pool) external view returns (address[] memory, uint256[] memory, uint256);
+
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**

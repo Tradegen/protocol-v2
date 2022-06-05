@@ -3,8 +3,8 @@ const { parseEther } = require("@ethersproject/units");
 const Web3 = require("web3");
 const { ethers } = require("hardhat");
 const web3 = new Web3('https://alfajores-forno.celo-testnet.org');
-/*
-describe("Pool", () => {
+
+describe("CappedPool", () => {
   let deployer;
   let otherUser;
 
@@ -12,9 +12,9 @@ describe("Pool", () => {
   let addressResolverAddress;
   let AddressResolverFactory;
 
-  let pool;
-  let poolAddress;
-  let PoolFactory;
+  let cappedPool;
+  let cappedPoolAddress;
+  let CappedPoolFactory;
 
   let poolManagerLogic;
   let poolManagerLogicAddress;
@@ -57,7 +57,7 @@ describe("Pool", () => {
     PoolManagerLogicFactory = await ethers.getContractFactory('PoolManagerLogic');
     SettingsFactory = await ethers.getContractFactory('Settings');
     AssetHandlerFactory = await ethers.getContractFactory('TestAssetHandler');
-    PoolFactory = await ethers.getContractFactory('Pool');
+    CappedPoolFactory = await ethers.getContractFactory('CappedPool');
     TokenFactory = await ethers.getContractFactory('TestTokenERC20');
     ERC20VerifierFactory = await ethers.getContractFactory('ERC20Verifier', {
         libraries: {
@@ -369,4 +369,4 @@ describe("Pool", () => {
         expect(allowance).to.equal(1000);
     });
   });
-});*/
+});
