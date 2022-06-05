@@ -62,4 +62,8 @@ contract TestAssetHandler {
     function setBalance(address _asset, uint256 _amount) external {
         balances[_asset] = _amount;
     }
+
+    function getCurrentTime() external view returns (uint256) {
+        return block.timestamp;
+    }
 }
