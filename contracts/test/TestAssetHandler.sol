@@ -7,6 +7,8 @@ contract TestAssetHandler {
     address public stableCoinAddress;
     mapping (address => uint256) public assetTypes;
     mapping (uint256 => address[]) public assets;
+    mapping (address => address) public verifiers;
+    mapping (address => uint256) public balances;
 
     constructor() {}
 
@@ -41,11 +43,23 @@ contract TestAssetHandler {
         return 1e18;
     }
 
-    function getBalance(address, address) external view returns (uint256) {
-        return 0;
+    function getBalance(address, address _asset) external view returns (uint256) {
+        return balances[_asset];
     }
 
     function getDecimals(address) external view returns (uint256) {
         return 18;
+    }
+
+    function setVerifier(address _asset, address _verifier) external {
+        verifiers[_asset] = _verifier;
+    }
+
+    function getVerifier(address _asset) external view returns (address) {
+        return verifiers[_asset];
+    }
+
+    function setBalance(address _asset, uint256 _amount) external {
+        balances[_asset] = _amount;
     }
 }

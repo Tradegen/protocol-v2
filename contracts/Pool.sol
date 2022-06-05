@@ -87,7 +87,7 @@ contract Pool is IPool, ERC20 {
         uint256 sum;
 
         // Get the USD value of each asset.
-        for (uint256 i = 0; i <= addresses.length; i++) {
+        for (uint256 i = 0; i < addresses.length; i++) {
             sum = sum.add(getAssetValue(addresses[i], assetHandlerAddress));
         }
         
@@ -117,14 +117,14 @@ contract Pool is IPool, ERC20 {
         uint256 USDperToken = IAssetHandler(assetHandlerAddress).getUSDPrice(_depositAsset);
         uint256 userUSDValue = _amount.mul(USDperToken).div(10 ** IAssetHandler(assetHandlerAddress).getDecimals(_depositAsset));
         uint256 numberOfPoolTokens = (totalSupply() > 0) ? totalSupply().mul(userUSDValue).div(getPoolValue()) : userUSDValue;
-
+        
         // Mint pool tokens and transfer them to the user.
         _mint(msg.sender, numberOfPoolTokens);
-
+        
         // Update the cost basis.
         userDeposits[msg.sender] = userDeposits[msg.sender].add(userUSDValue);
         totalDeposits = totalDeposits.add(userUSDValue);
-
+        
         IERC20(_depositAsset).safeTransferFrom(msg.sender, address(this), _amount);
 
         emit Deposit(msg.sender, _amount, userUSDValue, _depositAsset, _amount);
@@ -151,9 +151,6 @@ contract Pool is IPool, ERC20 {
         totalDeposits = totalDeposits.sub(userDeposits[msg.sender].mul(_numberOfPoolTokens).div(balanceOf(msg.sender)));
         userDeposits[msg.sender] = userDeposits[msg.sender].sub(userDeposits[msg.sender].mul(_numberOfPoolTokens).div(balanceOf(msg.sender)));
 
-        // Burn the user's pool tokens.
-        _burn(msg.sender, _numberOfPoolTokens);
-
         uint256[] memory amountsWithdrawn = new uint256[](addresses.length);
 
         // Withdraw user's portion of pool's assets.
@@ -167,6 +164,9 @@ contract Pool is IPool, ERC20 {
                 amountsWithdrawn[i] = portionOfAssetBalance;
             }
         }
+
+        // Burn the user's pool tokens.
+        _burn(msg.sender, _numberOfPoolTokens);
 
         emit Withdraw(msg.sender, _numberOfPoolTokens, valueWithdrawn, addresses, amountsWithdrawn);
     }
@@ -231,7 +231,7 @@ contract Pool is IPool, ERC20 {
     * @return uint256 Price of a pool token.
     */
     function _tokenPrice(uint256 _poolValue) internal view returns (uint256) {
-        return (_poolValue == 0) ? 1e18 : _poolValue.div(totalSupply());
+        return (_poolValue == 0) ? 1e18 : _poolValue.mul(1e18).div(totalSupply());
     }
 
     /**
