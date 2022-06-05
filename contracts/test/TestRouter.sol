@@ -8,12 +8,14 @@ contract TestRouter {
     uint256 public amount;
     address public token;
 
-    constructor(address _token, _amount) {
+    constructor(address _token, uint256 _amount) {
         token = _token;
         amount = _amount;
     }
 
-    function swapAssetForTGEN(address, uint256) external {
+    function swapAssetForTGEN(address, uint256) external returns (uint256) {
         IERC20(token).transfer(msg.sender, amount);
+
+        return 0;
     }   
 }

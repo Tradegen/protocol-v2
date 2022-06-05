@@ -106,7 +106,7 @@ contract CappedPool is ICappedPool {
         uint256 sum;
 
         // Get the USD value of each asset.
-        for (uint256 i = 0; i <= addresses.length; i++) {
+        for (uint256 i = 0; i < addresses.length; i++) {
             sum = sum.add(getAssetValue(addresses[i], assetHandlerAddress));
         }
         

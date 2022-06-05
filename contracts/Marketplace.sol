@@ -37,9 +37,6 @@ contract Marketplace is IMarketplace, ERC1155Holder {
     // User is limited to 1 listing per pool.
     mapping (address => mapping (address => uint256)) public userToListingIndex;
 
-    // (pool address => pool's manager).
-    mapping (address => address) public poolManagers; 
-
     constructor(address _addressResolver) {
         ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
     }
@@ -60,12 +57,12 @@ contract Marketplace is IMarketplace, ERC1155Holder {
     /**
     * @notice Given the index of a marketplace listing, returns the listing's data.
     * @param _index Index of the marketplace listing.
-    * @return (address, address, uint256, uint256, uint256) Address of the pool token, address of the seller, pool token's class, number of tokens for sale, USD per token.
+    * @return (bool, address, address, uint256, uint256, uint256) Whether the listing exists, address of the pool token, address of the seller, pool token's class, number of tokens for sale, USD per token.
     */
-    function getMarketplaceListing(uint256 _index) external view override indexInRange(_index) returns (address, address, uint256, uint256, uint256) {
+    function getMarketplaceListing(uint256 _index) external view override returns (bool, address, address, uint256, uint256, uint256) {
         MarketplaceListing memory listing = marketplaceListings[_index];
 
-        return (listing.poolAddress, listing.seller, listing.tokenClass, listing.numberOfTokens, listing.price);
+        return (listing.exists, listing.poolAddress, listing.seller, listing.tokenClass, listing.numberOfTokens, listing.price);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -97,7 +94,7 @@ contract Marketplace is IMarketplace, ERC1155Holder {
         
         // Transfer stablecoin to seller.
         IERC20(stableCoinAddress).safeTransfer(listing.seller, amountOfUSD.mul(10000 - protocolFee - managerFee).div(10000));
-
+        
         {
         // Swap protocol fee for TGEN and send to xTGEN contract.
         address TGEN = ADDRESS_RESOLVER.getContractAddress("TGEN");
@@ -132,13 +129,13 @@ contract Marketplace is IMarketplace, ERC1155Holder {
     * @param _price USD per token.
     */
     function createListing(address _poolAddress, uint256 _tokenClass, uint256 _numberOfTokens, uint256 _price) external override isValidPool(_poolAddress) {
-        require(userToListingIndex[_poolAddress][msg.sender] == 0, "Marketplace: Already have a marketplace listing for this pool.");
+        require(userToListingIndex[msg.sender][_poolAddress] == 0, "Marketplace: Already have a marketplace listing for this pool.");
         require(_price > 0, "Marketplace: Price must be greater than 0.");
         require(_tokenClass >= 1 && _tokenClass <= 4, "Marketplace: Token class must be between 1 and 4.");
         require(_numberOfTokens > 0 && _numberOfTokens <= IERC1155(ICappedPool(_poolAddress).getNFTAddress()).balanceOf(msg.sender, _tokenClass), "Marketplace: Quantity out of bounds.");
 
         numberOfMarketplaceListings = numberOfMarketplaceListings.add(1);
-        userToListingIndex[_poolAddress][msg.sender] = numberOfMarketplaceListings;
+        userToListingIndex[msg.sender][_poolAddress] = numberOfMarketplaceListings;
         marketplaceListings[numberOfMarketplaceListings] = MarketplaceListing(_poolAddress, msg.sender, true, _tokenClass, _numberOfTokens, _price);
 
         // Transfer tokens to marketplace.
@@ -197,7 +194,7 @@ contract Marketplace is IMarketplace, ERC1155Holder {
             // Transfer tokens to marketplace.
             IERC1155(ICappedPool(_poolAddress).getNFTAddress()).safeTransferFrom(msg.sender, address(this), marketplaceListings[_index].tokenClass, _newQuantity.sub(oldQuantity), "");
         }
-        else if (oldQuantity < _newQuantity) {
+        else {
             //Transfer tokens to seller.
             IERC1155(ICappedPool(_poolAddress).getNFTAddress()).setApprovalForAll(msg.sender, true);
             IERC1155(ICappedPool(_poolAddress).getNFTAddress()).safeTransferFrom(address(this), msg.sender, marketplaceListings[_index].tokenClass, oldQuantity.sub(_newQuantity), "");
@@ -218,7 +215,7 @@ contract Marketplace is IMarketplace, ERC1155Holder {
         marketplaceListings[_index].exists = false;
         marketplaceListings[_index].numberOfTokens = 0;
 
-        userToListingIndex[_poolAddress][_user] = 0;
+        userToListingIndex[_user][_poolAddress] = 0;
     }
 
     /* ========== MODIFIERS ========== */
@@ -231,7 +228,7 @@ contract Marketplace is IMarketplace, ERC1155Holder {
     }
 
     modifier onlySeller(address _poolAddress, uint256 _index) {
-        require(_index == userToListingIndex[_poolAddress][msg.sender],
+        require(_index == userToListingIndex[msg.sender][_poolAddress],
                 "Marketplace: Only the seller can call this function.");
         _;
     }

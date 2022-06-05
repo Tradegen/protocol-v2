@@ -149,6 +149,9 @@ describe("Marketplace", () => {
     let tx = await addressResolver.setContractAddress("Settings", settingsAddress);
     await tx.wait();
 
+    let tx1 = await addressResolver.setContractAddress("TGEN", tradegenTokenAddress);
+    await tx1.wait();
+
     let tx2 = await addressResolver.setContractAddress("AssetHandler", assetHandlerAddress);
     await tx2.wait();
 
@@ -203,6 +206,25 @@ describe("Marketplace", () => {
     let tx19 = await tradegenToken.transfer(routerAddress, parseEther("1000"));
     await tx19.wait();
 
+    let tx20 = await assetHandler.setStableCoinAddress(stablecoinAddress);
+    await tx20.wait();
+  });
+
+  beforeEach(async () => {
+    marketplace = await MarketplaceFactory.deploy(addressResolverAddress);
+    await marketplace.deployed();
+    marketplaceAddress = marketplace.address;
+
+    registry = await RegistryFactory.deploy(addressResolverAddress);
+    await registry.deployed();
+    registryAddress = registry.address;
+
+    let tx = await addressResolver.setContractAddress("Marketplace", marketplaceAddress);
+    await tx.wait();
+
+    let tx2 = await addressResolver.setContractAddress("Registry", registryAddress);
+    await tx2.wait();
+
     let tx20 = await registry.createCappedPool("Capped Pool 1", parseEther("1"), 1000, 1000);
     let temp1 = await tx20.wait();
     let event1 = temp1.events[temp1.events.length - 1];
@@ -215,7 +237,7 @@ describe("Marketplace", () => {
     let temp2 = await tx21.wait();
     let event2 = temp2.events[temp2.events.length - 1];
     cappedPoolAddress2 = event2.args.poolAddress;
-    poolManagerLogicAddress2 = event1.args.poolManagerLogicAddress;
+    poolManagerLogicAddress2 = event2.args.poolManagerLogicAddress;
     cappedPool2 = CappedPoolFactory.attach(cappedPoolAddress2);
     poolManagerLogic2 = PoolManagerLogicFactory.attach(poolManagerLogicAddress2);
 
@@ -223,7 +245,7 @@ describe("Marketplace", () => {
     let temp3 = await tx22.wait();
     let event3 = temp3.events[temp3.events.length - 1];
     cappedPoolAddress3 = event3.args.poolAddress;
-    poolManagerLogicAddress3 = event1.args.poolManagerLogicAddress;
+    poolManagerLogicAddress3 = event3.args.poolManagerLogicAddress;
     cappedPool3 = CappedPoolFactory.attach(cappedPoolAddress3);
     poolManagerLogic3 = PoolManagerLogicFactory.attach(poolManagerLogicAddress3);
 
@@ -231,7 +253,7 @@ describe("Marketplace", () => {
     let temp4 = await tx23.wait();
     let event4 = temp4.events[temp4.events.length - 1];
     cappedPoolAddress4 = event4.args.poolAddress;
-    poolManagerLogicAddress4 = event1.args.poolManagerLogicAddress;
+    poolManagerLogicAddress4 = event4.args.poolManagerLogicAddress;
     cappedPool4 = CappedPoolFactory.attach(cappedPoolAddress4);
     poolManagerLogic4 = PoolManagerLogicFactory.attach(poolManagerLogicAddress4);
 
@@ -319,111 +341,730 @@ describe("Marketplace", () => {
     let tx51 = await cappedPool4.connect(otherUser).deposit(100, stablecoinAddress);
     await tx51.wait();
   });
-
-  beforeEach(async () => {
-    marketplace = await MarketplaceFactory.deploy(addressResolverAddress);
-    await marketplace.deployed();
-    marketplaceAddress = marketplace.address;
-
-    let tx = await addressResolver.setContractAddress("Marketplace", marketplaceAddress);
-    await tx.wait();
-  });
-
-  describe("#createCappedPool", () => {
-    it("pool name too long", async () => {
-      let tx = registry.createCappedPool("Pool name that is too long because it contains more than 50 characters, causing the transaction to revert.", parseEther("1"), 10000, 1000);
-      await expect(tx).to.be.reverted;
-
-      let userCappedPools = await registry.userCappedPools(deployer.address);
-      expect(userCappedPools).to.equal(0);
-    });
-
-    it("performance fee too high", async () => {
-        let tx = registry.createCappedPool("Pool", parseEther("1"), 10000, 100000000000);
+  
+  describe("#createListing", () => {
+    it("not valid pool", async () => {
+        let tx = marketplace.createListing(deployer.address, 1, 10, parseEther("10"));
         await expect(tx).to.be.reverted;
 
-        let userCappedPools = await registry.userCappedPools(deployer.address);
-        expect(userCappedPools).to.equal(0);
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(0);
     });  
 
-    it("supply cap too high", async () => {
-        let tx = registry.createCappedPool("Pool", parseEther("1"), 10000000000000, 1000);
+    it("wrong token class", async () => {
+        let tx = marketplace.createListing(cappedPoolAddress1, 10, 10, parseEther("10"));
         await expect(tx).to.be.reverted;
 
-        let userCappedPools = await registry.userCappedPools(deployer.address);
-        expect(userCappedPools).to.equal(0);
-    }); 
-
-    it("supply cap too low", async () => {
-        let tx = registry.createCappedPool("Pool", parseEther("1"), 1, 1000);
-        await expect(tx).to.be.reverted;
-
-        let userCappedPools = await registry.userCappedPools(deployer.address);
-        expect(userCappedPools).to.equal(0);
-    }); 
-
-    it("seed price too high", async () => {
-        let tx = registry.createCappedPool("Pool", parseEther("10000000000000"), 10000, 1000);
-        await expect(tx).to.be.reverted;
-
-        let userCappedPools = await registry.userCappedPools(deployer.address);
-        expect(userCappedPools).to.equal(0);
-    }); 
-
-    it("seed price too low", async () => {
-        let tx = registry.createCappedPool("Pool", parseEther("0.000001"), 10000, 1000);
-        await expect(tx).to.be.reverted;
-
-        let userCappedPools = await registry.userCappedPools(deployer.address);
-        expect(userCappedPools).to.equal(0);
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(0);
     });
 
-    it('meets requirements', async () => {
-        let tx = await registry.createCappedPool("Pool", parseEther("1"), 10000, 1000);
-        let temp = await tx.wait();
-        let event = temp.events[temp.events.length - 1];
-        poolAddress = event.args.poolAddress;
-        poolManagerLogicAddress = event.args.poolManagerLogicAddress;
-        cappedPool = CappedPoolFactory.attach(poolAddress);
-        poolManagerLogic = PoolManagerLogicFactory.attach(poolManagerLogicAddress);
+    it("not enough tokens", async () => {
+        let tx = marketplace.createListing(cappedPoolAddress1, 1, 800, parseEther("10"));
+        await expect(tx).to.be.reverted;
 
-        let userCappedPools = await registry.userCappedPools(deployer.address);
-        expect(userCappedPools).to.equal(1);
-
-        let name = await cappedPool.name();
-        expect(name).to.equal("Pool");
-
-        let manager = await cappedPool.manager();
-        expect(manager).to.equal(deployer.address);
-
-        let seedPrice = await cappedPool.seedPrice();
-        expect(seedPrice).to.equal(parseEther("1"));
-
-        let maxSupply = await cappedPool.maxSupply();
-        expect(maxSupply).to.equal(10000);
-
-        let assignedPoolManagerLogicAddress = await poolManagerLogicFactoryContract.poolManagerLogics(poolAddress);
-        expect(assignedPoolManagerLogicAddress).to.equal(poolManagerLogicAddress);
-
-        let poolManagerLogicManager = await poolManagerLogic.manager();
-        expect(poolManagerLogicManager).to.equal(deployer.address);
-
-        let performanceFee = await poolManagerLogic.performanceFee();
-        expect(performanceFee).to.equal(1000);
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(0);
     });
 
-    it('user has too many pools', async () => {
-        let tx = await registry.createCappedPool("Pool", parseEther("1"), 10000, 1000);
+    it("meets requirements", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
         await tx.wait();
 
-        let tx2 = await registry.createCappedPool("Pool2", parseEther("2"), 10000, 2000);
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
         await tx2.wait();
 
-        let tx3 = registry.createCappedPool("Pool3", parseEther("3"), 10000, 3000);
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let balanceOfDeployer = await cappedPoolNFT.balanceOf(deployer.address, 1);
+        expect(balanceOfDeployer).to.equal(40);
+
+        let balanceOfMarketplace = await cappedPoolNFT.balanceOf(marketplaceAddress, 1);
+        expect(balanceOfMarketplace).to.equal(10);
+
+        let listingIndex = await marketplace.getListingIndex(deployer.address, cappedPoolAddress1);
+        expect(listingIndex).to.equal(1);
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[0]).to.be.true;
+        expect(listing[1]).to.equal(cappedPoolAddress1);
+        expect(listing[2]).to.equal(deployer.address);
+        expect(listing[3]).to.equal(1);
+        expect(listing[4]).to.equal(10);
+        expect(listing[5]).to.equal(parseEther("10"));
+    });
+
+    it("already have listing for the same pool", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.createListing(cappedPoolAddress1, 2, 10, parseEther("5"));
         await expect(tx3).to.be.reverted;
 
-        let userCappedPools = await registry.userCappedPools(deployer.address);
-        expect(userCappedPools).to.equal(2);
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+    });
+
+    it("meets requirements; different pools from same user", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        cappedPoolNFTAddress = cappedPool2.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx3 = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx3.wait();
+
+        let tx4 = await marketplace.createListing(cappedPoolAddress2, 2, 5, parseEther("8"));
+        await tx4.wait();
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(2);
+
+        let balanceOfDeployer = await cappedPoolNFT.balanceOf(deployer.address, 2);
+        expect(balanceOfDeployer).to.equal(45);
+
+        let balanceOfMarketplace = await cappedPoolNFT.balanceOf(marketplaceAddress, 2);
+        expect(balanceOfMarketplace).to.equal(5);
+
+        let listingIndex1 = await marketplace.getListingIndex(deployer.address, cappedPoolAddress1);
+        expect(listingIndex1).to.equal(1);
+
+        let listingIndex2 = await marketplace.getListingIndex(deployer.address, cappedPoolAddress2);
+        expect(listingIndex2).to.equal(2);
+
+        let listing1 = await marketplace.getMarketplaceListing(1);
+        expect(listing1[0]).to.be.true;
+        expect(listing1[1]).to.equal(cappedPoolAddress1);
+        expect(listing1[2]).to.equal(deployer.address);
+        expect(listing1[3]).to.equal(1);
+        expect(listing1[4]).to.equal(10);
+        expect(listing1[5]).to.equal(parseEther("10"));
+
+        let listing2 = await marketplace.getMarketplaceListing(2);
+        expect(listing2[0]).to.be.true;
+        expect(listing2[1]).to.equal(cappedPoolAddress2);
+        expect(listing2[2]).to.equal(deployer.address);
+        expect(listing2[3]).to.equal(2);
+        expect(listing2[4]).to.equal(5);
+        expect(listing2[5]).to.equal(parseEther("8"));
+    });
+
+    it("meets requirements; same pool with different users", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await cappedPoolNFT.connect(otherUser).setApprovalForAll(marketplaceAddress, true);
+        await tx3.wait();
+
+        let tx4 = await marketplace.connect(otherUser).createListing(cappedPoolAddress1, 2, 5, parseEther("8"));
+        await tx4.wait();
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(2);
+
+        let balanceOfDeployer = await cappedPoolNFT.balanceOf(deployer.address, 1);
+        expect(balanceOfDeployer).to.equal(40);
+
+        let balanceOfOther = await cappedPoolNFT.balanceOf(otherUser.address, 2);
+        expect(balanceOfOther).to.equal(45);
+
+        let balanceOfMarketplace1 = await cappedPoolNFT.balanceOf(marketplaceAddress, 1);
+        expect(balanceOfMarketplace1).to.equal(10);
+
+        let balanceOfMarketplace2 = await cappedPoolNFT.balanceOf(marketplaceAddress, 2);
+        expect(balanceOfMarketplace2).to.equal(5);
+
+        let listingIndex1 = await marketplace.getListingIndex(deployer.address, cappedPoolAddress1);
+        expect(listingIndex1).to.equal(1);
+
+        let listingIndex2 = await marketplace.getListingIndex(otherUser.address, cappedPoolAddress1);
+        expect(listingIndex2).to.equal(2);
+
+        let listing1 = await marketplace.getMarketplaceListing(1);
+        expect(listing1[0]).to.be.true;
+        expect(listing1[1]).to.equal(cappedPoolAddress1);
+        expect(listing1[2]).to.equal(deployer.address);
+        expect(listing1[3]).to.equal(1);
+        expect(listing1[4]).to.equal(10);
+        expect(listing1[5]).to.equal(parseEther("10"));
+
+        let listing2 = await marketplace.getMarketplaceListing(2);
+        expect(listing2[0]).to.be.true;
+        expect(listing2[1]).to.equal(cappedPoolAddress1);
+        expect(listing2[2]).to.equal(otherUser.address);
+        expect(listing2[3]).to.equal(2);
+        expect(listing2[4]).to.equal(5);
+        expect(listing2[5]).to.equal(parseEther("8"));
+    });
+  });
+  
+  describe("#removeListing", () => {
+    it("not valid pool", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.removeListing(deployer.address, 1);
+        await expect(tx3).to.be.reverted;
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+    });  
+
+    it("index out of range", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.removeListing(cappedPoolAddress1, 10);
+        await expect(tx3).to.be.reverted;
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+    });
+
+    it("not seller", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.connect(otherUser).removeListing(cappedPoolAddress1, 1);
+        await expect(tx3).to.be.reverted;
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+    });
+
+    it("meets requirements", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await marketplace.removeListing(cappedPoolAddress1, 1);
+        await tx3.wait();
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let balanceOfDeployer = await cappedPoolNFT.balanceOf(deployer.address, 1);
+        expect(balanceOfDeployer).to.equal(50);
+
+        let balanceOfMarketplace = await cappedPoolNFT.balanceOf(marketplaceAddress, 1);
+        expect(balanceOfMarketplace).to.equal(0);
+
+        let listingIndex = await marketplace.getListingIndex(deployer.address, cappedPoolAddress1);
+        expect(listingIndex).to.equal(0);
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[0]).to.be.false;
+        expect(listing[1]).to.equal(cappedPoolAddress1);
+        expect(listing[2]).to.equal(deployer.address);
+        expect(listing[3]).to.equal(1);
+        expect(listing[4]).to.equal(0);
+        expect(listing[5]).to.equal(parseEther("10"));
+    });
+
+    it("meets requirements; different pools from same user", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        cappedPoolNFTAddress = cappedPool2.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx3 = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx3.wait();
+
+        let tx4 = await marketplace.createListing(cappedPoolAddress2, 2, 5, parseEther("8"));
+        await tx4.wait();
+
+        let tx5 = await marketplace.removeListing(cappedPoolAddress2, 2);
+        await tx5.wait();
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(2);
+
+        let balanceOfDeployer = await cappedPoolNFT.balanceOf(deployer.address, 2);
+        expect(balanceOfDeployer).to.equal(50);
+
+        let balanceOfMarketplace = await cappedPoolNFT.balanceOf(marketplaceAddress, 2);
+        expect(balanceOfMarketplace).to.equal(0);
+
+        let listingIndex1 = await marketplace.getListingIndex(deployer.address, cappedPoolAddress1);
+        expect(listingIndex1).to.equal(1);
+
+        let listingIndex2 = await marketplace.getListingIndex(deployer.address, cappedPoolAddress2);
+        expect(listingIndex2).to.equal(0);
+
+        let listing1 = await marketplace.getMarketplaceListing(1);
+        expect(listing1[0]).to.be.true;
+        expect(listing1[1]).to.equal(cappedPoolAddress1);
+        expect(listing1[2]).to.equal(deployer.address);
+        expect(listing1[3]).to.equal(1);
+        expect(listing1[4]).to.equal(10);
+        expect(listing1[5]).to.equal(parseEther("10"));
+
+        let listing2 = await marketplace.getMarketplaceListing(2);
+        expect(listing2[0]).to.be.false;
+        expect(listing2[1]).to.equal(cappedPoolAddress2);
+        expect(listing2[2]).to.equal(deployer.address);
+        expect(listing2[3]).to.equal(2);
+        expect(listing2[4]).to.equal(0);
+        expect(listing2[5]).to.equal(parseEther("8"));
+    });
+
+    it("meets requirements; same pool with different users", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await cappedPoolNFT.connect(otherUser).setApprovalForAll(marketplaceAddress, true);
+        await tx3.wait();
+
+        let tx4 = await marketplace.connect(otherUser).createListing(cappedPoolAddress1, 2, 5, parseEther("8"));
+        await tx4.wait();
+
+        let tx5 = await marketplace.connect(otherUser).removeListing(cappedPoolAddress1, 2);
+        await tx5.wait();
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(2);
+
+        let balanceOfDeployer = await cappedPoolNFT.balanceOf(deployer.address, 1);
+        expect(balanceOfDeployer).to.equal(40);
+
+        let balanceOfOther = await cappedPoolNFT.balanceOf(otherUser.address, 2);
+        expect(balanceOfOther).to.equal(50);
+
+        let balanceOfMarketplace1 = await cappedPoolNFT.balanceOf(marketplaceAddress, 1);
+        expect(balanceOfMarketplace1).to.equal(10);
+
+        let balanceOfMarketplace2 = await cappedPoolNFT.balanceOf(marketplaceAddress, 2);
+        expect(balanceOfMarketplace2).to.equal(0);
+
+        let listingIndex1 = await marketplace.getListingIndex(deployer.address, cappedPoolAddress1);
+        expect(listingIndex1).to.equal(1);
+
+        let listingIndex2 = await marketplace.getListingIndex(otherUser.address, cappedPoolAddress1);
+        expect(listingIndex2).to.equal(0);
+
+        let listing1 = await marketplace.getMarketplaceListing(1);
+        expect(listing1[0]).to.be.true;
+        expect(listing1[1]).to.equal(cappedPoolAddress1);
+        expect(listing1[2]).to.equal(deployer.address);
+        expect(listing1[3]).to.equal(1);
+        expect(listing1[4]).to.equal(10);
+        expect(listing1[5]).to.equal(parseEther("10"));
+
+        let listing2 = await marketplace.getMarketplaceListing(2);
+        expect(listing2[0]).to.be.false;
+        expect(listing2[1]).to.equal(cappedPoolAddress1);
+        expect(listing2[2]).to.equal(otherUser.address);
+        expect(listing2[3]).to.equal(2);
+        expect(listing2[4]).to.equal(0);
+        expect(listing2[5]).to.equal(parseEther("8"));
+    });
+  });
+  
+  describe("#updatePrice", () => {
+    it("not valid pool", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.updatePrice(deployer.address, 1, parseEther("88"));
+        await expect(tx3).to.be.reverted;
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[5]).to.equal(parseEther("10"));
+    });  
+
+    it("index out of range", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.updatePrice(cappedPoolAddress1, 1000, parseEther("88"));
+        await expect(tx3).to.be.reverted;
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[5]).to.equal(parseEther("10"));
+    });
+
+    it("not seller", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.connect(otherUser).updatePrice(cappedPoolAddress1, 1, parseEther("88"));
+        await expect(tx3).to.be.reverted;
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[5]).to.equal(parseEther("10"));
+    });
+
+    it("meets requirements", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await marketplace.updatePrice(cappedPoolAddress1, 1, parseEther("88"));
+        await tx3.wait();
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[5]).to.equal(parseEther("88"));
+    });
+  });
+
+  describe("#updateQuantity", () => {
+    it("not valid pool", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.updateQuantity(deployer.address, 1, 30);
+        await expect(tx3).to.be.reverted;
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[4]).to.equal(10);
+    });  
+
+    it("index out of range", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.updateQuantity(cappedPoolAddress1, 10, 30);
+        await expect(tx3).to.be.reverted;
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[4]).to.equal(10);
+    });
+
+    it("not seller", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.connect(otherUser).updateQuantity(cappedPoolAddress1, 1, 30);
+        await expect(tx3).to.be.reverted;
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[4]).to.equal(10);
+    });
+
+    it("quantity out of bounds", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.updateQuantity(cappedPoolAddress1, 1, 300);
+        await expect(tx3).to.be.reverted;
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[4]).to.equal(10);
+    });
+
+    it("meets requirements; new > old", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx3.wait();
+
+        let tx4 = await marketplace.updateQuantity(cappedPoolAddress1, 1, 20);
+        await tx4.wait();
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[4]).to.equal(20);
+
+        let balanceOfDeployer = await cappedPoolNFT.balanceOf(deployer.address, 1);
+        expect(balanceOfDeployer).to.equal(30);
+
+        let balanceOfMarketplace = await cappedPoolNFT.balanceOf(marketplaceAddress, 1);
+        expect(balanceOfMarketplace).to.equal(20);
+    });
+
+    it("meets requirements; new < old", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await marketplace.updateQuantity(cappedPoolAddress1, 1, 5);
+        await tx3.wait();
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[4]).to.equal(5);
+
+        let balanceOfDeployer = await cappedPoolNFT.balanceOf(deployer.address, 1);
+        expect(balanceOfDeployer).to.equal(45);
+
+        let balanceOfMarketplace = await cappedPoolNFT.balanceOf(marketplaceAddress, 1);
+        expect(balanceOfMarketplace).to.equal(5);
+    });
+  });
+  
+  describe("#purchase", () => {
+    it("not valid pool", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.connect(otherUser).purchase(deployer.address, 1, 5);
+        await expect(tx3).to.be.reverted;
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[4]).to.equal(10);
+    });  
+
+    it("index out of range", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.connect(otherUser).purchase(cappedPoolAddress1, 5, 3);
+        await expect(tx3).to.be.reverted;
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[4]).to.equal(10);
+    });
+
+    it("listing does not exist", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await marketplace.removeListing(cappedPoolAddress1, 1);
+        await tx3.wait();
+
+        let tx4 = marketplace.connect(otherUser).purchase(cappedPoolAddress1, 5, 3);
+        await expect(tx4).to.be.reverted;
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[4]).to.equal(00);
+    });
+
+    it("cannot buy your own position", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = marketplace.purchase(cappedPoolAddress1, 1, 3);
+        await expect(tx3).to.be.reverted;
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[4]).to.equal(10);
+    });
+
+    it("meets requirements; partial", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 10, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await stablecoin.connect(otherUser).approve(marketplaceAddress, parseEther("10"));
+        await tx3.wait();
+
+        let initialBalanceStaking = await tradegenToken.balanceOf(addressResolverAddress);
+        let initialBalanceDeployer = await stablecoin.balanceOf(deployer.address);
+        let initialBalanceOther = await stablecoin.balanceOf(otherUser.address);
+
+        let tx4 = await marketplace.connect(otherUser).purchase(cappedPoolAddress1, 1, 1);
+        await tx4.wait();
+
+        let newBalanceStaking = await tradegenToken.balanceOf(addressResolverAddress);
+        let newBalanceDeployer = await stablecoin.balanceOf(deployer.address);
+        let newBalanceOther = await stablecoin.balanceOf(otherUser.address);
+        let expectedNewBalanceStaking = BigInt(initialBalanceStaking) + BigInt(parseEther("1"));
+        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) + BigInt(parseEther("9.9"));
+        let expectedNewBalanceOther = BigInt(initialBalanceOther) - BigInt(parseEther("10"));
+        expect(newBalanceStaking.toString()).to.equal(expectedNewBalanceStaking.toString());
+        expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
+        expect(newBalanceOther.toString()).to.equal(expectedNewBalanceOther.toString());
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[4]).to.equal(9);
+
+        let balanceOfDeployer = await cappedPoolNFT.balanceOf(deployer.address, 1);
+        expect(balanceOfDeployer).to.equal(40);
+
+        let balanceOfMarketplace = await cappedPoolNFT.balanceOf(marketplaceAddress, 1);
+        expect(balanceOfMarketplace).to.equal(9);
+
+        let balanceOfOther = await cappedPoolNFT.balanceOf(otherUser.address, 1);
+        expect(balanceOfOther).to.equal(1);
+    });
+
+    it("meets requirements; full", async () => {
+        cappedPoolNFTAddress = cappedPool1.getNFTAddress();
+        cappedPoolNFT = CappedPoolNFTFactory.attach(cappedPoolNFTAddress);
+
+        let tx = await cappedPoolNFT.setApprovalForAll(marketplaceAddress, true);
+        await tx.wait();
+
+        let tx2 = await marketplace.createListing(cappedPoolAddress1, 1, 1, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await stablecoin.connect(otherUser).approve(marketplaceAddress, parseEther("10"));
+        await tx3.wait();
+
+        let initialBalanceStaking = await tradegenToken.balanceOf(addressResolverAddress);
+        let initialBalanceDeployer = await stablecoin.balanceOf(deployer.address);
+        let initialBalanceOther = await stablecoin.balanceOf(otherUser.address);
+
+        let tx4 = await marketplace.connect(otherUser).purchase(cappedPoolAddress1, 1, 1);
+        await tx4.wait();
+
+        let newBalanceStaking = await tradegenToken.balanceOf(addressResolverAddress);
+        let newBalanceDeployer = await stablecoin.balanceOf(deployer.address);
+        let newBalanceOther = await stablecoin.balanceOf(otherUser.address);
+        let expectedNewBalanceStaking = BigInt(initialBalanceStaking) + BigInt(parseEther("1"));
+        let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) + BigInt(parseEther("9.9"));
+        let expectedNewBalanceOther = BigInt(initialBalanceOther) - BigInt(parseEther("10"));
+        expect(newBalanceStaking.toString()).to.equal(expectedNewBalanceStaking.toString());
+        expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
+        expect(newBalanceOther.toString()).to.equal(expectedNewBalanceOther.toString());
+
+        let listing = await marketplace.getMarketplaceListing(1);
+        expect(listing[0]).to.be.false;
+        expect(listing[4]).to.equal(0);
+
+        let balanceOfDeployer = await cappedPoolNFT.balanceOf(deployer.address, 1);
+        expect(balanceOfDeployer).to.equal(49);
+
+        let balanceOfMarketplace = await cappedPoolNFT.balanceOf(marketplaceAddress, 1);
+        expect(balanceOfMarketplace).to.equal(0);
+
+        let balanceOfOther = await cappedPoolNFT.balanceOf(otherUser.address, 1);
+        expect(balanceOfOther).to.equal(1);
     });
   });
 });

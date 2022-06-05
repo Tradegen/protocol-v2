@@ -26,9 +26,9 @@ interface IMarketplace {
     /**
     * @notice Given the index of a marketplace listing, returns the listing's data.
     * @param _index Index of the marketplace listing.
-    * @return (address, address, uint256, uint256, uint256) Address of the pool token, address of the seller, pool token's class, number of tokens for sale, USD per token.
+    * @return (bool, address, address, uint256, uint256, uint256) Whether the listing exists, address of the pool token, address of the seller, pool token's class, number of tokens for sale, USD per token.
     */
-    function getMarketplaceListing(uint256 _index) external view returns (address, address, uint256, uint256, uint256);
+    function getMarketplaceListing(uint256 _index) external view returns (bool, address, address, uint256, uint256, uint256);
 
     /**
     * @notice Purchases the given number of tokens from the marketplace listing.
