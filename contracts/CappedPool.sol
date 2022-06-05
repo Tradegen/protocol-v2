@@ -117,7 +117,7 @@ contract CappedPool is ICappedPool {
         // Mint pool token NFTs and update cost basis.
         uint256 totalDeposits = CAPPED_POOL_NFT.depositByClass(msg.sender, _numberOfPoolTokens, amountOfUSD);
 
-        IERC20(_depositAsset).safeTransferFrom(msg.sender, address(this), amountOfUSD.div(USDperDepositAssetToken));
+        IERC20(_depositAsset).safeTransferFrom(msg.sender, address(this), amountOfUSD.mul(1e18).div(USDperDepositAssetToken));
 
         // Update the pool's weight in the farming system.
         POOL_MANAGER.updateWeight(poolValue > totalDeposits ? poolValue.sub(totalDeposits) : 0, _tokenPrice(poolValue));
@@ -142,9 +142,6 @@ contract CappedPool is ICappedPool {
 
         collectedManagerFees = collectedManagerFees.add(withdrawVars.unrealizedProfits.mul(POOL_MANAGER_LOGIC.performanceFee()).div(withdrawVars.valueWithdrawn).div(10000));
 
-        // Burn the user's pool tokens and update cost basis.
-        withdrawVars.totalDeposits = CAPPED_POOL_NFT.burnTokens(msg.sender, _tokenClass, _numberOfPoolTokens);
-
         uint256[] memory amountsWithdrawn = new uint256[](addresses.length);
 
         // Withdraw the user's portion of pool's assets.
@@ -162,6 +159,9 @@ contract CappedPool is ICappedPool {
 
         emit Withdraw(msg.sender, _numberOfPoolTokens, withdrawVars.valueWithdrawn, addresses, amountsWithdrawn);
         }
+
+        // Burn the user's pool tokens and update cost basis.
+        withdrawVars.totalDeposits = CAPPED_POOL_NFT.burnTokens(msg.sender, _tokenClass, _numberOfPoolTokens);
 
         // Update the pool's weight in the farming system.
         POOL_MANAGER.updateWeight(withdrawVars.poolValue > withdrawVars.totalDeposits ? withdrawVars.poolValue.sub(withdrawVars.totalDeposits) : 0, _tokenPrice(withdrawVars.poolValue));
@@ -259,7 +259,7 @@ contract CappedPool is ICappedPool {
     * @return uint256 Price of a pool token.
     */
     function _tokenPrice(uint256 _poolValue) internal view returns (uint256) {
-        return (_poolValue == 0) ? seedPrice : _poolValue.div(CAPPED_POOL_NFT.totalSupply());
+        return (CAPPED_POOL_NFT.totalSupply() == 0) ? seedPrice : _poolValue.div(CAPPED_POOL_NFT.totalSupply());
     }
 
     /**

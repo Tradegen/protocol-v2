@@ -42,6 +42,14 @@ describe("CappedPool", () => {
   let ERC20VerifierAddress;
   let ERC20VerifierFactory;
 
+  let cappedPoolNFT;
+  let cappedPoolNFTAddress;
+  let CappedPoolNFTFactory;
+
+  let poolManager;
+  let poolManagerAddress;
+  let PoolManagerFactory;
+
   before(async () => {
     const signers = await ethers.getSigners();
 
@@ -59,6 +67,8 @@ describe("CappedPool", () => {
     AssetHandlerFactory = await ethers.getContractFactory('TestAssetHandler');
     CappedPoolFactory = await ethers.getContractFactory('CappedPool');
     TokenFactory = await ethers.getContractFactory('TestTokenERC20');
+    PoolManagerFactory = await ethers.getContractFactory('TestPoolManager');
+    CappedPoolNFTFactory = await ethers.getContractFactory('CappedPoolNFT');
     ERC20VerifierFactory = await ethers.getContractFactory('ERC20Verifier', {
         libraries: {
             Bytes: bytesAddress,
@@ -72,6 +82,10 @@ describe("CappedPool", () => {
     assetHandler = await AssetHandlerFactory.deploy();
     await assetHandler.deployed();
     assetHandlerAddress = assetHandler.address;
+
+    poolManager = await PoolManagerFactory.deploy();
+    await poolManager.deployed();
+    poolManagerAddress = poolManager.address;
 
     settings = await SettingsFactory.deploy();
     await settings.deployed();
@@ -137,177 +151,295 @@ describe("CappedPool", () => {
 
     let tx15 = await assetHandler.setVerifier(tradegenTokenAddress, ERC20VerifierAddress);
     await tx15.wait();
+
+    let tx16 = await addressResolver.setContractAddress("PoolManager", poolManagerAddress);
+    await tx16.wait();
+
+    let tx17 = await settings.setParameterValue("TimeBetweenFeeSnapshots", 1000);
+    await tx17.wait();
   });
 
   beforeEach(async () => {
-    pool = await PoolFactory.deploy("Pool", deployer.address, addressResolverAddress);
-    await pool.deployed();
-    poolAddress = pool.address;
+    cappedPool = await CappedPoolFactory.deploy("Pool", parseEther("1"), 1000, deployer.address, addressResolverAddress, poolManagerAddress);
+    await cappedPool.deployed();
+    cappedPoolAddress = cappedPool.address;
 
-    let tx = await pool.setPoolManagerLogic(poolManagerLogicAddress);
+    cappedPoolNFT = await CappedPoolNFTFactory.deploy(cappedPoolAddress, 1000);
+    await cappedPoolNFT.deployed();
+    cappedPoolNFTAddress = cappedPoolNFT.address;
+
+    let tx = await cappedPool.initializeContracts(cappedPoolNFTAddress, poolManagerLogicAddress);
     await tx.wait();
   });
   
   describe("#deposit", () => {
     it("is not deposit asset", async () => {
-        let tx = pool.deposit(otherUser.address, 100)
+        let tx = cappedPool.deposit(100, otherUser.address)
         await expect(tx).to.be.reverted;
 
-        let balanceOf = await pool.balanceOf(deployer.address);
-        expect(balanceOf).to.equal(0);
+        let balance = await cappedPoolNFT.balance(deployer.address);
+        expect(balance).to.equal(0);
+    });  
+
+    it("quantity out of bounds", async () => {
+        let tx = cappedPool.deposit(10000, stablecoinAddress)
+        await expect(tx).to.be.reverted;
+
+        let balance = await cappedPoolNFT.balance(deployer.address);
+        expect(balance).to.equal(0);
     });  
 
     it("meets requirements", async () => {
         let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
         await tx.wait();
 
-        let tx2 = await stablecoin.approve(poolAddress, parseEther("100"));
+        let tx2 = await stablecoin.approve(cappedPoolAddress, parseEther("100"));
         await tx2.wait();
 
-        let tx3 = await pool.deposit(stablecoinAddress, parseEther("100"));
+        let tx3 = await cappedPool.deposit(100, stablecoinAddress);
         await tx3.wait();
 
-        let balanceOf = await pool.balanceOf(deployer.address);
-        expect(balanceOf).to.equal(parseEther("100"));
+        let balanceOf1 = await cappedPoolNFT.balanceOf(deployer.address, 1);
+        expect(balanceOf1).to.equal(50);
 
-        let totalSupply = await pool.totalSupply();
-        expect(totalSupply).to.equal(parseEther("100"));
+        let balanceOf2 = await cappedPoolNFT.balanceOf(deployer.address, 2);
+        expect(balanceOf2).to.equal(50);
 
-        let userDeposits = await pool.userDeposits(deployer.address);
+        let balance = await cappedPoolNFT.balance(deployer.address);
+        expect(balance).to.equal(100);
+
+        let totalSupply = await cappedPoolNFT.totalSupply();
+        expect(totalSupply).to.equal(100);
+
+        let userDeposits = await cappedPoolNFT.userDeposits(deployer.address);
         expect(userDeposits).to.equal(parseEther("100"));
 
-        let totalDeposits = await pool.totalDeposits();
+        let totalDeposits = await cappedPoolNFT.totalDeposits();
         expect(totalDeposits).to.equal(parseEther("100"));
 
-        let poolValue = await pool.getPoolValue();
+        let poolValue = await cappedPool.getPoolValue();
         expect(poolValue).to.equal(parseEther("100"));
 
-        let tokenPrice = await pool.tokenPrice();
+        let tokenPrice = await cappedPool.tokenPrice();
         expect(tokenPrice).to.equal(parseEther("1"));
+
+        let availableTokensPerClass = await cappedPoolNFT.getAvailableTokensPerClass();
+        expect(availableTokensPerClass[0]).to.equal(0);
+        expect(availableTokensPerClass[1]).to.equal(50);
+        expect(availableTokensPerClass[2]).to.equal(200);
+        expect(availableTokensPerClass[3]).to.equal(650);
+
+        let tokenBalancePerClass = await cappedPoolNFT.getTokenBalancePerClass(deployer.address);
+        expect(tokenBalancePerClass[0]).to.equal(50);
+        expect(tokenBalancePerClass[1]).to.equal(50);
+        expect(tokenBalancePerClass[2]).to.equal(0);
+        expect(tokenBalancePerClass[3]).to.equal(0);
+
+        let poolBalance = await stablecoin.balanceOf(cappedPoolAddress);
+        expect(poolBalance).to.equal(parseEther("100"));
     });
   });
   
   describe("#withdraw", () => {
-    it("not enough balance", async () => {
-        let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
-        await tx.wait();
-
-        let tx2 = await stablecoin.approve(poolAddress, parseEther("100"));
-        await tx2.wait();
-
-        let tx3 = await pool.deposit(stablecoinAddress, parseEther("100"));
-        await tx3.wait();
-
-        let tx4 = pool.withdraw(parseEther("1000"))
-        await expect(tx4).to.be.reverted;
-
-        let balanceOf = await pool.balanceOf(deployer.address);
-        expect(balanceOf).to.equal(parseEther("100"));
-    });  
-
     it("meets requirements; partial", async () => {
-        let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("50"));
+        let tx = await stablecoin.approve(cappedPoolAddress, parseEther("100"));
         await tx.wait();
 
-        let tx2 = await stablecoin.approve(poolAddress, parseEther("100"));
+        let tx2 = await cappedPool.deposit(100, stablecoinAddress);
         await tx2.wait();
 
-        let tx3 = await pool.deposit(stablecoinAddress, parseEther("100"));
+        let tx3 = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
         await tx3.wait();
 
-        let tx4 = await pool.withdraw(parseEther("50"));
+        let initialBalanceStablecoinDeployer = await stablecoin.balanceOf(deployer.address);
+        let initialBalanceStablecoinPool = await stablecoin.balanceOf(cappedPoolAddress);
+
+        let tx4 = await cappedPool.withdraw(50, 1);
         await tx4.wait();
 
-        let balanceOf = await pool.balanceOf(deployer.address);
-        expect(balanceOf).to.equal(parseEther("50"));
+        let tx5 = await assetHandler.setBalance(stablecoinAddress, parseEther("50"));
+        await tx5.wait();
 
-        let totalSupply = await pool.totalSupply();
-        expect(totalSupply).to.equal(parseEther("50"));
+        let newBalanceStablecoinDeployer = await stablecoin.balanceOf(deployer.address);
+        let newBalanceStablecoinPool = await stablecoin.balanceOf(cappedPoolAddress);
+        let expectedNewBalanceStablecoinDeployer = BigInt(initialBalanceStablecoinDeployer) + BigInt(parseEther("50"));
+        let expectedNewBalanceStablecoinPool = BigInt(initialBalanceStablecoinPool) - BigInt(parseEther("50"));
+        expect(newBalanceStablecoinDeployer.toString()).to.equal(expectedNewBalanceStablecoinDeployer.toString());
+        expect(newBalanceStablecoinPool.toString()).to.equal(expectedNewBalanceStablecoinPool.toString());
 
-        let userDeposits = await pool.userDeposits(deployer.address);
+        let balanceOf1 = await cappedPoolNFT.balanceOf(deployer.address, 1);
+        expect(balanceOf1).to.equal(0);
+
+        let balanceOf2 = await cappedPoolNFT.balanceOf(deployer.address, 2);
+        expect(balanceOf2).to.equal(50);
+
+        let balance = await cappedPoolNFT.balance(deployer.address);
+        expect(balance).to.equal(50);
+
+        let totalSupply = await cappedPoolNFT.totalSupply();
+        expect(totalSupply).to.equal(50);
+
+        let userDeposits = await cappedPoolNFT.userDeposits(deployer.address);
         expect(userDeposits).to.equal(parseEther("50"));
 
-        let totalDeposits = await pool.totalDeposits();
+        let totalDeposits = await cappedPoolNFT.totalDeposits();
         expect(totalDeposits).to.equal(parseEther("50"));
 
-        let poolValue = await pool.getPoolValue();
+        let poolValue = await cappedPool.getPoolValue();
         expect(poolValue).to.equal(parseEther("50"));
 
-        let tokenPrice = await pool.tokenPrice();
+        let tokenPrice = await cappedPool.tokenPrice();
         expect(tokenPrice).to.equal(parseEther("1"));
+
+        let availableTokensPerClass = await cappedPoolNFT.getAvailableTokensPerClass();
+        expect(availableTokensPerClass[0]).to.equal(50);
+        expect(availableTokensPerClass[1]).to.equal(50);
+        expect(availableTokensPerClass[2]).to.equal(200);
+        expect(availableTokensPerClass[3]).to.equal(650);
+
+        let tokenBalancePerClass = await cappedPoolNFT.getTokenBalancePerClass(deployer.address);
+        expect(tokenBalancePerClass[0]).to.equal(0);
+        expect(tokenBalancePerClass[1]).to.equal(50);
+        expect(tokenBalancePerClass[2]).to.equal(0);
+        expect(tokenBalancePerClass[3]).to.equal(0);
     });
 
     it("meets requirements; all", async () => {
         let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
         await tx.wait();
 
-        let tx2 = await stablecoin.approve(poolAddress, parseEther("100"));
+        let tx2 = await stablecoin.approve(cappedPoolAddress, parseEther("100"));
         await tx2.wait();
 
-        let tx3 = await pool.deposit(stablecoinAddress, parseEther("100"));
+        let tx3 = await cappedPool.deposit(100, stablecoinAddress);
         await tx3.wait();
 
-        let tx4 = await pool.withdraw(parseEther("100"));
+        let initialBalanceStablecoinDeployer = await stablecoin.balanceOf(deployer.address);
+        let initialBalanceStablecoinPool = await stablecoin.balanceOf(cappedPoolAddress);
+
+        let tx4 = await cappedPool.withdraw(50, 1);
         await tx4.wait();
 
-        let tx5 = await assetHandler.setBalance(stablecoinAddress, 0);
+        let tx5 = await cappedPool.withdraw(50, 2);
         await tx5.wait();
-        
-        let balanceOf = await pool.balanceOf(deployer.address);
-        expect(balanceOf).to.equal(0);
 
-        let totalSupply = await pool.totalSupply();
+        let tx6 = await assetHandler.setBalance(stablecoinAddress, 0);
+        await tx6.wait();
+
+        let newBalanceStablecoinDeployer = await stablecoin.balanceOf(deployer.address);
+        let newBalanceStablecoinPool = await stablecoin.balanceOf(cappedPoolAddress);
+        let expectedNewBalanceStablecoinDeployer = BigInt(initialBalanceStablecoinDeployer) + BigInt(parseEther("100"));
+        let expectedNewBalanceStablecoinPool = BigInt(initialBalanceStablecoinPool) - BigInt(parseEther("100"));
+        expect(newBalanceStablecoinDeployer.toString()).to.equal(expectedNewBalanceStablecoinDeployer.toString());
+        expect(newBalanceStablecoinPool.toString()).to.equal(expectedNewBalanceStablecoinPool.toString());
+
+        let balanceOf1 = await cappedPoolNFT.balanceOf(deployer.address, 1);
+        expect(balanceOf1).to.equal(0);
+
+        let balanceOf2 = await cappedPoolNFT.balanceOf(deployer.address, 2);
+        expect(balanceOf2).to.equal(0);
+
+        let balance = await cappedPoolNFT.balance(deployer.address);
+        expect(balance).to.equal(0);
+
+        let totalSupply = await cappedPoolNFT.totalSupply();
         expect(totalSupply).to.equal(0);
 
-        let userDeposits = await pool.userDeposits(deployer.address);
+        let userDeposits = await cappedPoolNFT.userDeposits(deployer.address);
         expect(userDeposits).to.equal(0);
 
-        let totalDeposits = await pool.totalDeposits();
+        let totalDeposits = await cappedPoolNFT.totalDeposits();
         expect(totalDeposits).to.equal(0);
 
-        let poolValue = await pool.getPoolValue();
+        let poolValue = await cappedPool.getPoolValue();
         expect(poolValue).to.equal(0);
 
-        let tokenPrice = await pool.tokenPrice();
+        let tokenPrice = await cappedPool.tokenPrice();
         expect(tokenPrice).to.equal(parseEther("1"));
+
+        let availableTokensPerClass = await cappedPoolNFT.getAvailableTokensPerClass();
+        expect(availableTokensPerClass[0]).to.equal(50);
+        expect(availableTokensPerClass[1]).to.equal(100);
+        expect(availableTokensPerClass[2]).to.equal(200);
+        expect(availableTokensPerClass[3]).to.equal(650);
+
+        let tokenBalancePerClass = await cappedPoolNFT.getTokenBalancePerClass(deployer.address);
+        expect(tokenBalancePerClass[0]).to.equal(0);
+        expect(tokenBalancePerClass[1]).to.equal(0);
+        expect(tokenBalancePerClass[2]).to.equal(0);
+        expect(tokenBalancePerClass[3]).to.equal(0);
     });
 
     it("meets requirements; withdraw all and deposit again", async () => {
-        let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("50"));
+        let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
         await tx.wait();
 
-        let tx2 = await stablecoin.approve(poolAddress, parseEther("100"));
+        let tx2 = await stablecoin.approve(cappedPoolAddress, parseEther("100"));
         await tx2.wait();
 
-        let tx3 = await pool.deposit(stablecoinAddress, parseEther("100"));
+        let tx3 = await cappedPool.deposit(100, stablecoinAddress);
         await tx3.wait();
 
-        let tx4 = await pool.withdraw(parseEther("100"));
+        let initialBalanceStablecoinDeployer = await stablecoin.balanceOf(deployer.address);
+        let initialBalanceStablecoinPool = await stablecoin.balanceOf(cappedPoolAddress);
+
+        let tx4 = await cappedPool.withdraw(50, 1);
         await tx4.wait();
 
-        let tx5 = await stablecoin.approve(poolAddress, parseEther("50"));
+        let tx5 = await cappedPool.withdraw(50, 2);
         await tx5.wait();
 
-        let tx6 = await pool.deposit(stablecoinAddress, parseEther("50"));
+        let tx6 = await stablecoin.approve(cappedPoolAddress, parseEther("100"));
         await tx6.wait();
 
-        let balanceOf = await pool.balanceOf(deployer.address);
-        expect(balanceOf).to.equal(parseEther("50"));
+        let tx7 = await cappedPool.deposit(100, stablecoinAddress);
+        await tx7.wait();
 
-        let totalSupply = await pool.totalSupply();
-        expect(totalSupply).to.equal(parseEther("50"));
+        let tx8 = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
+        await tx8.wait();
 
-        let userDeposits = await pool.userDeposits(deployer.address);
-        expect(userDeposits).to.equal(parseEther("50"));
+        let newBalanceStablecoinDeployer = await stablecoin.balanceOf(deployer.address);
+        let newBalanceStablecoinPool = await stablecoin.balanceOf(cappedPoolAddress);
+        let expectedNewBalanceStablecoinDeployer = BigInt(initialBalanceStablecoinDeployer);
+        let expectedNewBalanceStablecoinPool = BigInt(initialBalanceStablecoinPool);
+        expect(newBalanceStablecoinDeployer.toString()).to.equal(expectedNewBalanceStablecoinDeployer.toString());
+        expect(newBalanceStablecoinPool.toString()).to.equal(expectedNewBalanceStablecoinPool.toString());
 
-        let totalDeposits = await pool.totalDeposits();
-        expect(totalDeposits).to.equal(parseEther("50"));
+        let balanceOf1 = await cappedPoolNFT.balanceOf(deployer.address, 1);
+        expect(balanceOf1).to.equal(50);
 
-        let poolValue = await pool.getPoolValue();
-        expect(poolValue).to.equal(parseEther("50"));
+        let balanceOf2 = await cappedPoolNFT.balanceOf(deployer.address, 2);
+        expect(balanceOf2).to.equal(50);
 
-        let tokenPrice = await pool.tokenPrice();
+        let balance = await cappedPoolNFT.balance(deployer.address);
+        expect(balance).to.equal(100);
+
+        let totalSupply = await cappedPoolNFT.totalSupply();
+        expect(totalSupply).to.equal(100);
+
+        let userDeposits = await cappedPoolNFT.userDeposits(deployer.address);
+        expect(userDeposits).to.equal(parseEther("100"));
+
+        let totalDeposits = await cappedPoolNFT.totalDeposits();
+        expect(totalDeposits).to.equal(parseEther("100"));
+
+        let poolValue = await cappedPool.getPoolValue();
+        expect(poolValue).to.equal(parseEther("100"));
+
+        let tokenPrice = await cappedPool.tokenPrice();
         expect(tokenPrice).to.equal(parseEther("1"));
+
+        let availableTokensPerClass = await cappedPoolNFT.getAvailableTokensPerClass();
+        expect(availableTokensPerClass[0]).to.equal(0);
+        expect(availableTokensPerClass[1]).to.equal(50);
+        expect(availableTokensPerClass[2]).to.equal(200);
+        expect(availableTokensPerClass[3]).to.equal(650);
+
+        let tokenBalancePerClass = await cappedPoolNFT.getTokenBalancePerClass(deployer.address);
+        expect(tokenBalancePerClass[0]).to.equal(50);
+        expect(tokenBalancePerClass[1]).to.equal(50);
+        expect(tokenBalancePerClass[2]).to.equal(0);
+        expect(tokenBalancePerClass[3]).to.equal(0);
     });
   });
 
@@ -325,7 +457,7 @@ describe("CappedPool", () => {
             }]
           }, [stablecoinAddress, '1000']);
 
-        let tx = pool.executeTransaction(stablecoinAddress, params);
+        let tx = cappedPool.connect(otherUser).executeTransaction(stablecoinAddress, params);
         await expect(tx).to.be.reverted;
     });
     
@@ -342,7 +474,7 @@ describe("CappedPool", () => {
             }]
           }, [deployer.address, '1000']);
 
-        let tx = pool.executeTransaction(otherUser.address, params);
+        let tx = cappedPool.executeTransaction(otherUser.address, params);
         await expect(tx).to.be.reverted;
     });
 
@@ -362,11 +494,60 @@ describe("CappedPool", () => {
         let tx = await addressResolver.setContractVerifier(deployer.address, deployer.address);
         await tx.wait();
 
-        let tx2 = await pool.executeTransaction(stablecoinAddress, params);
+        let tx2 = await cappedPool.executeTransaction(stablecoinAddress, params);
         await tx2.wait();
 
-        let allowance = await stablecoin.allowance(poolAddress, deployer.address);
+        let allowance = await stablecoin.allowance(cappedPoolAddress, deployer.address);
         expect(allowance).to.equal(1000);
     });
+  });
+
+  describe("#takeSnapshot", () => {
+    it("not pool manager", async () => {
+        let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
+        await tx.wait();
+
+        let tx2 = cappedPool.connect(otherUser).takeSnapshot();
+        await expect(tx2).to.be.reverted;
+
+        let timestampAtLastSnapshot = await cappedPool.timestampAtLastSnapshot();
+        expect(timestampAtLastSnapshot).to.equal(0);
+    });  
+
+    it("unrealized profits decreased", async () => {
+        let tx = await assetHandler.setBalance(stablecoinAddress, 0);
+        await tx.wait();
+
+        let tx2 = cappedPool.takeSnapshot();
+        await expect(tx2).to.be.reverted;
+
+        let timestampAtLastSnapshot = await cappedPool.timestampAtLastSnapshot();
+        expect(timestampAtLastSnapshot).to.equal(0);
+    });  
+
+    it("meets requirements", async () => {
+        let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
+        await tx.wait();
+
+        let tx2 = await cappedPool.takeSnapshot();
+        await tx2.wait();
+
+        let timestampAtLastSnapshot = await cappedPool.timestampAtLastSnapshot();
+        expect(Number(timestampAtLastSnapshot)).to.be.greaterThan(0);
+
+        let unrealizedProfitsAtLastSnapshot = await cappedPool.unrealizedProfitsAtLastSnapshot();
+        expect(unrealizedProfitsAtLastSnapshot).to.equal(parseEther("100"));
+    }); 
+
+    it("not enough time between updates", async () => {
+        let tx = await assetHandler.setBalance(stablecoinAddress, parseEther("100"));
+        await tx.wait();
+
+        let tx2 = await cappedPool.takeSnapshot();
+        await tx2.wait();
+
+        let tx3 = cappedPool.takeSnapshot();
+        await expect(tx3).to.be.reverted;
+    }); 
   });
 });

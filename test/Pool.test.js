@@ -325,7 +325,7 @@ describe("Pool", () => {
             }]
           }, [stablecoinAddress, '1000']);
 
-        let tx = pool.executeTransaction(stablecoinAddress, params);
+        let tx = pool.connect(otherUser).executeTransaction(stablecoinAddress, params);
         await expect(tx).to.be.reverted;
     });
     
