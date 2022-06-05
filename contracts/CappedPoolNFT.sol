@@ -29,6 +29,8 @@ contract CappedPoolNFT is ICappedPoolNFT, ERC1155 {
     mapping (address => uint256) public override userDeposits;
     uint256 public override totalDeposits;
 
+    uint256 public override numberOfInvestors;
+
     constructor(address _pool, uint256 _supplyCap) {
         pool = _pool;
         supplyCap = _supplyCap;
@@ -71,6 +73,11 @@ contract CappedPoolNFT is ICappedPoolNFT, ERC1155 {
     */
     function depositByClass(address _user, uint256 _numberOfTokens, uint256 _amountOfUSD) external override onlyPool returns (uint256) {
         uint256 amount;
+
+        // Increment the number of investors if the user is depositing for the first time.
+        if (balance[_user] == 0) {
+            numberOfInvestors = numberOfInvestors.add(1);
+        }
 
         balance[_user] = balance[_user].add(_numberOfTokens);
         totalSupply = totalSupply.add(_numberOfTokens);
@@ -144,6 +151,11 @@ contract CappedPoolNFT is ICappedPoolNFT, ERC1155 {
         availableTokensByClass[_tokenClass.sub(1)] = availableTokensByClass[_tokenClass.sub(1)].add(_numberOfTokens);
 
         _burn(_user, _tokenClass, _numberOfTokens);
+
+        // Decrement the number of investors if the user has no tokens left in the pool.
+        if (balance[_user] == 0) {
+            numberOfInvestors = numberOfInvestors.sub(1);
+        }
 
         return totalDeposits;
     }

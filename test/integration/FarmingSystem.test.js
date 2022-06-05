@@ -3,7 +3,7 @@ const { parseEther } = require("@ethersproject/units");
 const Web3 = require("web3");
 const { ethers } = require("hardhat");
 const web3 = new Web3('https://alfajores-forno.celo-testnet.org');
-/*
+
 describe("CappedPool", () => {
   let deployer;
   let otherUser;
@@ -550,4 +550,4 @@ describe("CappedPool", () => {
         await expect(tx3).to.be.reverted;
     }); 
   });
-});*/
+});

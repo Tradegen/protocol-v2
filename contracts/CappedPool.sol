@@ -6,7 +6,7 @@ pragma experimental ABIEncoderV2;
 // Interfaces.
 import './interfaces/ISettings.sol';
 import './interfaces/IPoolManagerLogic.sol';
-import './interfaces/IPoolManager.sol';
+import './interfaces/farming-system/IPoolManager.sol';
 import './interfaces/IAddressResolver.sol';
 import './interfaces/IAssetHandler.sol';
 import './interfaces/IAssetVerifier.sol';
@@ -209,6 +209,17 @@ contract CappedPool is ICappedPool {
     }
 
     /**
+    * @notice Marks the pool as eligible for farming rewards.
+    * @dev Only the pool's manager can call this function.
+    * @dev Transaction will revert if the pool was not successfully marked as eligible.
+    */
+    function markPoolAsEligible() external onlyPoolManager {
+        require(POOL_MANAGER.markPoolAsEligible(getPoolValue(), CAPPED_POOL_NFT.numberOfInvestors()), "CappedPool: Could not mark pool as eligible.");
+
+        emit MarkedPoolAsEligible();
+    }
+
+    /**
     * @notice Executes a transaction on behalf of the pool, letting the pool interact with other external contracts.
     * @dev Only the pool's manager can call this function.
     * @param _to Address of external contract.
@@ -305,4 +316,5 @@ contract CappedPool is ICappedPool {
     event ExecutedTransaction(address manager, address to, uint256 transactionType);
     event InitializedContracts(address cappedPoolNFTAddress, address poolManagerLogicAddress);
     event TakeSnapshot(uint256 unrealizedProfits);
+    event MarkedPoolAsEligible();
 }

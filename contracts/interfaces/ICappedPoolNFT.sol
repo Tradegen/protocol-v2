@@ -9,6 +9,11 @@ interface ICappedPoolNFT {
     function userDeposits(address _user) external view returns (uint256);
 
     /**
+    * @notice Returns the number of unique users invested in the pool.
+    */
+    function numberOfInvestors() external view returns (uint256);
+
+    /**
     * @notice Returns the total cost basis of the pool.
     */
     function totalDeposits() external view returns (uint256);

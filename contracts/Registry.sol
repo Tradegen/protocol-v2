@@ -12,7 +12,7 @@ import './interfaces/ICappedPoolNFTFactory.sol';
 import './interfaces/ICappedPoolFactory.sol';
 import './interfaces/ISettings.sol';
 import './interfaces/IAddressResolver.sol';
-import './interfaces/IPoolManager.sol';
+import './interfaces/farming-system/IPoolManager.sol';
 import './interfaces/IPoolManagerLogicFactory.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/ICappedPool.sol';
