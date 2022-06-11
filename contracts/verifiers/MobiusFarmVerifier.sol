@@ -34,7 +34,7 @@ contract MobiusFarmVerifier is IVerifier {
         address mobiusLPVerifierAddress = ADDRESS_RESOLVER.assetVerifiers(3);
 
         // Get assets.
-        (, address rewardToken) = IMobiusLPVerifier(mobiusLPVerifierAddress).getFarmID(_to);
+        (uint256 farmID, address rewardToken) = IMobiusLPVerifier(mobiusLPVerifierAddress).getFarmID(_to);
 
         // Check if assets are supported.
         require(IAssetHandler(assetHandlerAddress).isValidAsset(rewardToken), "MobiusFarmVerifier: Unsupported reward token.");
@@ -45,7 +45,7 @@ contract MobiusFarmVerifier is IVerifier {
             // Parse transaction data.
             uint256 numberOfLPTokens = uint256(Bytes.getInput(_data, 0));
 
-            emit Staked(_pool, _to, numberOfLPTokens);
+            emit Staked(_pool, _to, farmID, numberOfLPTokens);
 
             return (true, rewardToken, 3);
         }
@@ -54,7 +54,7 @@ contract MobiusFarmVerifier is IVerifier {
             // Parse transaction data.
             uint256 numberOfLPTokens = uint256(Bytes.getInput(_data, 0));
 
-            emit Unstaked(_pool, _to, numberOfLPTokens);
+            emit Unstaked(_pool, _to, farmID, numberOfLPTokens);
 
             return (true, _to, 4);
         }
@@ -64,6 +64,6 @@ contract MobiusFarmVerifier is IVerifier {
 
     /* ========== EVENTS ========== */
 
-    event Staked(address pool, address stakingToken, uint256 numberOfLPTokens);
-    event Unstaked(address pool, address stakingToken, uint256 numberOfLPTokens);
+    event Staked(address pool, address stakingToken, uint256 farmID, uint256 numberOfLPTokens);
+    event Unstaked(address pool, address stakingToken, uint256 farmID, uint256 numberOfLPTokens);
 }

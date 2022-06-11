@@ -114,7 +114,7 @@ contract AssetHandler is IAssetHandler, Ownable {
     * @return uint256 Number of decimals.
     */
     function getDecimals(address _asset) external view override isValidAddress(_asset) returns (uint256) {
-        uint assetType = assetTypes[_asset];
+        uint256 assetType = assetTypes[_asset];
         address verifier = ADDRESS_RESOLVER.assetVerifiers(assetType);
 
         return IAssetVerifier(verifier).getDecimals(_asset);
@@ -126,7 +126,7 @@ contract AssetHandler is IAssetHandler, Ownable {
     * @return address Address of the asset's verifier.
     */
     function getVerifier(address _asset) public view override isValidAddress(_asset) returns (address) {
-        uint assetType = assetTypes[_asset];
+        uint256 assetType = assetTypes[_asset];
 
         return ADDRESS_RESOLVER.assetVerifiers(assetType);
     }

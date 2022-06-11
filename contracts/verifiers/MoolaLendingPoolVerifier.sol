@@ -48,7 +48,7 @@ contract MoolaLendingPoolVerifier is IVerifier {
 
             require(reserveAsset == underlyingAsset, "MoolaLendingPoolVerifier: Reserve asset is not the underlying asset.");
 
-            emit Deposit(_pool, _to, amount);
+            emit Deposit(_pool, _to, reserveAsset, amount);
 
             return (true, interestBearingToken, 5);
         }
@@ -60,7 +60,7 @@ contract MoolaLendingPoolVerifier is IVerifier {
 
             require(reserveAsset == underlyingAsset, "MoolaLendingPoolVerifier: Reserve asset is not the underlying asset.");
 
-            emit Borrow(_pool, _to, amount);
+            emit Borrow(_pool, _to, reserveAsset, amount);
 
             return (true, underlyingAsset, 6);
         }
@@ -75,7 +75,7 @@ contract MoolaLendingPoolVerifier is IVerifier {
             require(onBehalfOf == _pool, "MoolaLendingPoolVerifier: Must repay on behalf of pool.");
             }
 
-            emit Repay(_pool, _to, uint256(Bytes.getInput(_data, 1)));
+            emit Repay(_pool, _to, reserveAsset, uint256(Bytes.getInput(_data, 1)));
 
             return (true, address(0), 7);
         }
@@ -85,7 +85,7 @@ contract MoolaLendingPoolVerifier is IVerifier {
 
     /* ========== EVENTS ========== */
 
-    event Deposit(address pool, address lendingPool, uint256 amount);
-    event Borrow(address pool, address lendingPool, uint256 amount);
-    event Repay(address pool, address lendingPool, uint256 amount);
+    event Deposit(address pool, address lendingPool, address reserveAsset, uint256 amount);
+    event Borrow(address pool, address lendingPool, address reserveAsset, uint256 amount);
+    event Repay(address pool, address lendingPool, address reserveAsset, uint256 amount);
 }

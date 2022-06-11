@@ -18,7 +18,6 @@ contract PoolManagerLogic is IPoolManagerLogic {
     address public immutable manager;
     IAddressResolver public immutable addressResolver;
 
-    uint256 numberOfAssets;
     address[] public availableAssets;
     address[] public depositAssets;
 

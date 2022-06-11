@@ -49,7 +49,7 @@ contract UbeswapFarmVerifier is IVerifier {
             require(IAssetHandler(assetHandlerAddress).isValidAsset(rewardToken), "UbeswapFarmVerifier: Unsupported reward token.");
             require(IAssetHandler(assetHandlerAddress).isValidAsset(pair), "UbeswapFarmVerifier: Unsupported liquidity pair.");
 
-            emit Staked(_pool, _to, numberOfLPTokens);
+            emit Staked(_pool, _to, pair, numberOfLPTokens);
 
             return (true, rewardToken, 8);
         }
@@ -61,29 +61,32 @@ contract UbeswapFarmVerifier is IVerifier {
             // Check if assets are supported.
             require(IAssetHandler(assetHandlerAddress).isValidAsset(pair), "UbeswapFarmVerifier: Unsupported liquidity pair.");
 
-            emit Unstaked(_pool, _to, numberOfLPTokens);
+            emit Unstaked(_pool, _to, pair, numberOfLPTokens);
 
             return (true, pair, 9);
         }
         else if (method == bytes4(keccak256("getReward()")))
         {
+            uint256 earned = IStakingRewards(_to).earned(_pool);
+
             // Check if assets are supported.
             require(IAssetHandler(assetHandlerAddress).isValidAsset(rewardToken), "UbeswapFarmVerifier: Unsupported reward token.");
 
-            emit ClaimedReward(_pool, _to);
+            emit ClaimedReward(_pool, _to, rewardToken, earned);
 
             return (true, rewardToken, 10);
         }
         else if (method == bytes4(keccak256("exit()")))
         {
             uint256 numberOfLPTokens = IStakingRewards(_to).balanceOf(_pool);
+            uint256 earned = IStakingRewards(_to).earned(_pool);
 
             // Check if assets are supported.
             require(IAssetHandler(assetHandlerAddress).isValidAsset(rewardToken), "UbeswapFarmVerifier: Unsupported reward token.");
             require(IAssetHandler(assetHandlerAddress).isValidAsset(pair), "UbeswapFarmVerifier: Unsupported liquidity pair.");
 
-            emit Unstaked(_pool, _to, numberOfLPTokens);
-            emit ClaimedReward(_pool, _to);
+            emit Unstaked(_pool, _to, pair, numberOfLPTokens);
+            emit ClaimedReward(_pool, _to, rewardToken, earned);
 
             return (true, rewardToken, 11);
         }
@@ -93,7 +96,7 @@ contract UbeswapFarmVerifier is IVerifier {
 
     /* ========== EVENTS ========== */
 
-    event Staked(address pool, address farm, uint256 numberOfLPTokens);
-    event Unstaked(address pool, address farm, uint256 numberOfLPTokens);
-    event ClaimedReward(address pool, address farm);
+    event Staked(address pool, address farm, address pair, uint256 numberOfLPTokens);
+    event Unstaked(address pool, address farm, address pair, uint256 numberOfLPTokens);
+    event ClaimedReward(address pool, address farm, address rewardToken, uint256 amount);
 }

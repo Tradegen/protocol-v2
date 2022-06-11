@@ -3,7 +3,6 @@
 pragma solidity ^0.8.3;
 
 // Interfaces.
-import './interfaces/ISettings.sol';
 import './interfaces/IAddressResolver.sol';
 import './interfaces/IPoolManagerLogicFactory.sol';
 

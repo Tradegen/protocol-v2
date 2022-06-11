@@ -8,7 +8,6 @@ import './interfaces/IPool.sol';
 import "./openzeppelin-solidity/contracts/ERC20/ERC20.sol";
 
 // Interfaces.
-import './interfaces/ISettings.sol';
 import './interfaces/IPoolManagerLogic.sol';
 import './interfaces/IAddressResolver.sol';
 import './interfaces/IAssetHandler.sol';
@@ -103,7 +102,7 @@ contract Pool is IPool, ERC20 {
         
         IERC20(_depositAsset).safeTransferFrom(msg.sender, address(this), _amount);
 
-        emit Deposit(msg.sender, _amount, userUSDValue, _depositAsset, _amount);
+        emit Deposit(msg.sender, numberOfPoolTokens, userUSDValue, _depositAsset, _amount);
     }
 
     /**
@@ -253,7 +252,7 @@ contract Pool is IPool, ERC20 {
 
     /* ========== EVENTS ========== */
 
-    event Deposit(address user, uint256 amount, uint256 userUSDValue, address depositAsset, uint256 tokensDeposited);
+    event Deposit(address user, uint256 numberOfPoolTokens, uint256 userUSDValue, address depositAsset, uint256 amountDeposited);
     event Withdraw(address user, uint256 numberOfPoolTokens, uint256 valueWithdrawn, address[] assets, uint256[] amountsWithdrawn);
     event ExecutedTransaction(address manager, address to, uint256 transactionType);
     event SetPoolManagerLogic(address poolManagerLogicAddress);

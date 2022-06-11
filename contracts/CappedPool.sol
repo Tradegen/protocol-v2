@@ -122,7 +122,7 @@ contract CappedPool is ICappedPool {
         // Update the pool's weight in the farming system.
         POOL_MANAGER.updateWeight(poolValue > totalDeposits ? poolValue.sub(totalDeposits) : 0, _tokenPrice(poolValue));
 
-        emit Deposit(msg.sender, _numberOfPoolTokens, amountOfUSD, _depositAsset, amountOfUSD.div(USDperDepositAssetToken));
+        emit Deposit(msg.sender, _numberOfPoolTokens, amountOfUSD, _depositAsset, amountOfUSD.mul(1e18).div(USDperDepositAssetToken));
     }
 
     /**

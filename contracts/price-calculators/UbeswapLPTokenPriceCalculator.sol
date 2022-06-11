@@ -22,8 +22,8 @@ contract UbeswapLPTokenPriceCalculator is IPriceCalculator {
 
     IAddressResolver public ADDRESS_RESOLVER;
 
-    constructor(IAddressResolver addressResolver) {
-        ADDRESS_RESOLVER = addressResolver;
+    constructor(address _addressResolver) {
+        ADDRESS_RESOLVER = IAddressResolver(_addressResolver);
     }
 
     /* ========== VIEWS ========== */

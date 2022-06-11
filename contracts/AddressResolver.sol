@@ -17,7 +17,7 @@ contract AddressResolver is IAddressResolver, Ownable {
     mapping (address => address) public override contractVerifiers;
 
     // (asset type => address of asset's verifier).
-    mapping (uint => address) public override assetVerifiers;
+    mapping (uint256 => address) public override assetVerifiers;
 
     // (contract name => contract address).
     mapping (string => address) public contractAddresses;
@@ -31,7 +31,7 @@ contract AddressResolver is IAddressResolver, Ownable {
     * @param _contractName The name of the contract.
     * @return address The address associated with the given contract name.
     */
-    function getContractAddress(string memory _contractName) external view override returns(address) {        
+    function getContractAddress(string memory _contractName) external view override returns (address) {        
         return contractAddresses[_contractName];
     }
 
@@ -40,7 +40,7 @@ contract AddressResolver is IAddressResolver, Ownable {
     * @param _poolAddress The address to validate.
     * @return bool Whether the given address is a valid pool address.
     */
-    function checkIfPoolAddressIsValid(address _poolAddress) external view override returns(bool) {
+    function checkIfPoolAddressIsValid(address _poolAddress) external view override returns (bool) {
         return poolAddresses[_poolAddress];
     }
 

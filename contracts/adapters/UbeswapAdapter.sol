@@ -140,8 +140,8 @@ contract UbeswapAdapter is IUbeswapAdapter {
     * @return address The pair's address.
     */
     function getPair(address _tokenA, address _tokenB) public view override returns (address) {
-        require(_tokenA != address(0), "UbeswapAdapter: invalid address for tokenA.");
-        require(_tokenB != address(0), "UbeswapAdapter: invalid address for tokenB.");
+        require(_tokenA != address(0), "UbeswapAdapter: Invalid address for tokenA.");
+        require(_tokenB != address(0), "UbeswapAdapter: Invalid address for tokenB.");
 
         address uniswapV2FactoryAddress = ADDRESS_RESOLVER.getContractAddress("UniswapV2Factory");
 
@@ -155,7 +155,7 @@ contract UbeswapAdapter is IUbeswapAdapter {
     * @return uint Amount of UBE available.
     */
     function getAvailableRewards(address _poolAddress, address _farmAddress) external view override returns (uint256) {
-        require(_poolAddress != address(0), "UbeswapAdapter: invalid pool address.");
+        require(_poolAddress != address(0), "UbeswapAdapter: Invalid pool address.");
 
         return IStakingRewards(_farmAddress).earned(_poolAddress);
     }
@@ -169,7 +169,7 @@ contract UbeswapAdapter is IUbeswapAdapter {
     */
     function getTokenAmountsFromPair(address _tokenA, address _tokenB, uint256 _numberOfLPTokens) external view override returns (uint256, uint256) {
         address pair = getPair(_tokenA, _tokenB);
-        require(pair != address(0), "UbeswapAdapter: invalid address for pair.");
+        require(pair != address(0), "UbeswapAdapter: Invalid address for pair.");
 
         uint256 pairBalanceTokenA = IERC20(_tokenA).balanceOf(pair);
         uint256 pairBalanceTokenB = IERC20(_tokenB).balanceOf(pair);

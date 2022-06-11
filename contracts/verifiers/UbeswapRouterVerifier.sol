@@ -103,7 +103,7 @@ contract UbeswapRouterVerifier is IVerifier {
             // Check if recipient is a pool.
             require(_pool == Bytes.convert32toAddress(Bytes.getInput(_data, 5)), "UbeswapRouterVerifier: Recipient is not pool.");
 
-            emit AddedLiquidity(EventParams({
+            emit RemovedLiquidity(EventParams({
                 pool: _pool,
                 tokenA: tokenA,
                 tokenB: tokenB,
