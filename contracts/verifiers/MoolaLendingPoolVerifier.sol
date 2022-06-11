@@ -75,7 +75,7 @@ contract MoolaLendingPoolVerifier is IVerifier {
             require(onBehalfOf == _pool, "MoolaLendingPoolVerifier: Must repay on behalf of pool.");
             }
 
-            emit Repay(_pool, _to, reserveAsset, uint256(Bytes.getInput(_data, 1)));
+            emit Repay(_pool, _to, underlyingAsset, uint256(Bytes.getInput(_data, 1)));
 
             return (true, address(0), 7);
         }

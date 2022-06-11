@@ -143,6 +143,7 @@ contract Registry is IRegistry, Ownable {
 
         {
         address poolManagerAddress = addressResolver.getContractAddress("PoolManager");
+        require(poolManagerAddress != address(0), "Registry: Need to deploy farming system.");
         IPoolManager(poolManagerAddress).registerPool(poolAddress, _seedPrice);
         }
 
