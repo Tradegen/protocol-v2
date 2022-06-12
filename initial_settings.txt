@@ -1,0 +1,11 @@
+TimeBetweenFeeSnapshots = 604800 (1 week)
+MarketplaceProtocolFee = 100 (1%)
+MarketplaceAssetManagerFee = 200 (2%)
+MaximumPerformanceFee = 3000 (30%)
+MinimumTimeBetweenPerformanceFeeUpdates = 86400 (1 day)
+MaximumNumberOfPositionsInPool = 7
+MaximumNumberOfPoolsPerUser = 2
+MaximumNumberOfCappedPoolTokens = 1000000
+MinimumNumberOfCappedPoolTokens = 100
+MinimumCappedPoolSeedPrice = 1e16 ($0.01)
+MaximumCappedPoolSeedPrice = 1e21 ($1000)
