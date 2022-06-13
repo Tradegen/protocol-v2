@@ -69,12 +69,4 @@ interface IMarketplace {
     * @param _newQuantity Number of tokens to sell.
     */
     function updateQuantity(address _poolAddress, uint256 _index, uint256 _newQuantity) external;
-
-    /* ========== EVENTS ========== */
-
-    event CreatedListing(address seller, address poolAddress, uint256 marketplaceListing, uint256 tokenClass, uint256 numberOfTokens, uint256 price);
-    event RemovedListing(address seller, address poolAddress, uint256 marketplaceListing);
-    event UpdatedPrice(address seller, address poolAddress, uint256 marketplaceListing, uint256 newPrice);
-    event UpdatedQuantity(address seller, address poolAddress, uint256 marketplaceListing, uint256 newQuantity);
-    event Purchased(address buyer, address poolAddress, uint256 marketplaceListing, uint256 numberOfTokens, uint256 tokenPrice);
 }
