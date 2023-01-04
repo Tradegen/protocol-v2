@@ -16,6 +16,24 @@ In addition to pools, users can also invest in ‘Capped pools’ with a capped 
 
 These smart contracts have not been audited yet.
 
+## Repository Structure
+
+```
+.
+├── abi  ## Generated ABIs that developers can use to interact with the system.
+├── contract addresses  ## Address of each deployed contract, organized by network.
+├── contracts  ## All source code.
+│   ├── adapters  ## Adapters used for communicating with external contracts.
+│   ├── farming-system  ## A copy of the farming system, used for integration tests.
+│   ├── interfaces  ## Interfaces used for defining/calling contracts.
+│   ├── libraries  ## Libraries storing helper functions.
+│   ├── openzeppelin-solidity  ## Helper contracts provided by OpenZeppelin.
+│   ├── price-calculators  ## Price calculators for various types of assets.
+│   ├── test  ## Mock contracts used for testing main contracts.
+│   ├── verifiers  ## Contracts for verifying external protocols.
+├── test ## Source code for testing code in //contracts.
+```
+
 ## Documentation
 
 To learn more about the Tradegen project, visit the docs at https://docs.tradegen.io.
