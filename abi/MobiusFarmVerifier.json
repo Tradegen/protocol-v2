@@ -59,6 +59,12 @@
         {
           "indexed": false,
           "internalType": "uint256",
+          "name": "farmID",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
           "name": "numberOfLPTokens",
           "type": "uint256"
         }
@@ -80,6 +86,12 @@
           "internalType": "address",
           "name": "stakingToken",
           "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "farmID",
+          "type": "uint256"
         },
         {
           "indexed": false,
